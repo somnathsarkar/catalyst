@@ -10,7 +10,6 @@
 namespace catalyst {
 class Application :: Renderer {
  public:
-  static const uint32_t kMaxDebugDrawVertices = 1024;
   Renderer(Application* app);
   void StartUp();
   void LoadScene(const Scene& scene);
@@ -56,6 +55,12 @@ class Application :: Renderer {
     PushConstantData push_constants;
     DirectionalLightUniform directional_light_uniform;
   };
+  struct SceneResourceDetails {
+    uint32_t mesh_count;
+    uint32_t texture_count;
+    uint32_t vertex_count;
+  };
+
 #ifndef NDEBUG
   static const bool debug_enabled_ = true;
 #else
@@ -111,9 +116,9 @@ class Application :: Renderer {
   std::vector<VkFence> in_flight_fences_;
 
   const Scene* scene_;
+  SceneResourceDetails scene_resource_details_;
   VkDeviceMemory vertex_memory_;
   VkBuffer vertex_buffer_;
-  VkDeviceSize vertex_buffer_size_;
   std::vector<VkDeviceMemory> uniform_memory_;
   std::vector<VkBuffer> uniform_buffers_;
   VkDeviceSize uniform_buffer_size_;
@@ -151,16 +156,15 @@ class Application :: Renderer {
   VkExtent2D SelectSwapExtent(VkSurfaceCapabilitiesKHR capabilities);
   void CreateSwapchain();
   void CreateDepthResources();
-  void CreateShadowmapResources();
   void DestroySwapchain();
   void RecreateSwapchain();
 
   // Rendering Pipeline - Generic
   VkShaderModule CreateShaderModule(const std::vector<char>& buffer);
   void CreateSampler();
-  void CreatePipelines();
-  void CreateRenderPasses();
-  void CreateFramebuffers();
+  void CreatePipelines(bool include_fixed_size = true);
+  void CreateRenderPasses(bool include_fixed_size = true);
+  void CreateFramebuffers(bool include_fixed_size = true);
 
   // Rendering Pipeline - Graphics
   void CreatePipelineCache();
@@ -178,7 +182,6 @@ class Application :: Renderer {
   // Rendering Pipeline - Depthmaps
   void CreateDepthmapRenderPass();
   void CreateDepthmapPipeline();
-  void CreateShadowmapFramebuffers();
   void BeginDepthmapRenderPass(VkCommandBuffer& cmd, VkFramebuffer& framebuffer);
 
   // Needed for each window, can be in rendermanager_surface.cc
@@ -191,16 +194,24 @@ class Application :: Renderer {
   void CreateDescriptorPool();
   void CreateDescriptorSets();
 
-  // Scene Management
+  // Fixed Size Resources
+  void CreateVertexBuffer();
+  void CreateDirectionalLightUniformBuffer();
+  void CreateDirectionalShadowmapResources();
+  void CreateDirectionalShadowmapFramebuffers();
+
+  // Scene Resources
+  void LoadSceneResources();
+  void LoadMeshes();
+  void LoadTextures();
+
+  // Utilities
   uint32_t SelectMemoryType(const VkMemoryRequirements& mem_reqs, const VkMemoryPropertyFlags& req_props);
   void CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory,
                     const VkDeviceSize& size, const VkBufferUsageFlags& usage,
                     const VkMemoryPropertyFlags& req_props);
   void BeginSingleUseCommandBuffer(VkCommandBuffer& cmd);
   void EndSingleUseCommandBuffer(VkCommandBuffer& cmd);
-  void CreateVertexBuffer();
-  void CreateDirectionalLightUniformBuffer();
-  void CreateDirectionalLightShadowmapSampler();
   void WriteDescriptorSets();
 
   // Draw Commands
@@ -223,7 +234,6 @@ class Application :: Renderer {
       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
       void* pUserData);
 
-  // Filesystem operations, maybe take out of render manager
   static std::vector<char> ReadFile(const std::string& path);
 
   // Uncopyable

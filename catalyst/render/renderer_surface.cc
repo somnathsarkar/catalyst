@@ -250,7 +250,7 @@ void Application::Renderer::CreateDepthResources() {
     depth_image_views_.push_back(depth_iv);
   }
 }
-void Application::Renderer::CreateShadowmapResources() {
+void Application::Renderer::CreateDirectionalShadowmapResources() {
   shadowmap_images_.resize(frame_count_);
   shadowmap_image_views_.resize(frame_count_);
   shadowmap_memory_.resize(frame_count_);
@@ -264,8 +264,8 @@ void Application::Renderer::CreateShadowmapResources() {
       image_ci.flags = 0;
       image_ci.imageType = VK_IMAGE_TYPE_2D;
       image_ci.format = depth_format_;
-      image_ci.extent.width = swapchain_extent_.width;
-      image_ci.extent.height = swapchain_extent_.height;
+      image_ci.extent.width = Scene::kMaxShadowmapResolution;
+      image_ci.extent.height = Scene::kMaxShadowmapResolution;
       image_ci.extent.depth = 1;
       image_ci.mipLevels = 1;
       image_ci.arrayLayers = 1;
@@ -318,56 +318,63 @@ void Application::Renderer::CreateShadowmapResources() {
       shadowmap_image_views_[frame_i].push_back(depth_iv);
     }
   }
+  // Transition shadowmaps
+  VkCommandBuffer cmd;
+  BeginSingleUseCommandBuffer(cmd);
+  std::vector<VkImageMemoryBarrier> image_barriers;
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    for (uint32_t shadow_i = 0; shadow_i < Scene::kMaxDirectionalLights;
+         shadow_i++) {
+      VkImageMemoryBarrier image_barrier{};
+      image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      image_barrier.pNext = nullptr;
+      image_barrier.srcAccessMask = 0;
+      image_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      image_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      image_barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      image_barrier.srcQueueFamilyIndex =
+          queue_family_indices_.graphics_queue_index_.value();
+      image_barrier.dstQueueFamilyIndex =
+          queue_family_indices_.graphics_queue_index_.value();
+      image_barrier.image = shadowmap_images_[frame_i][shadow_i];
+      image_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+      image_barrier.subresourceRange.baseArrayLayer = 0;
+      image_barrier.subresourceRange.baseMipLevel = 0;
+      image_barrier.subresourceRange.layerCount = 1;
+      image_barrier.subresourceRange.levelCount = 1;
+      image_barriers.push_back(image_barrier);
+    }
+  }
+  vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 0,
+                       nullptr, static_cast<uint32_t>(image_barriers.size()),
+                       image_barriers.data());
+  EndSingleUseCommandBuffer(cmd);
 }
 void Application::Renderer::DestroySwapchain() {
   vkDeviceWaitIdle(device_);
 
   // Destroy framebuffers
-  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
     vkDestroyFramebuffer(device_, framebuffers_[frame_i], nullptr);
-    for (uint32_t shadowmap_i = 0; shadowmap_i < Scene::kMaxDirectionalLights;
-         shadowmap_i++) {
-      vkDestroyFramebuffer(
-          device_, shadowmap_framebuffers_[frame_i][shadowmap_i], nullptr);
-    }
-    shadowmap_framebuffers_[frame_i].clear();
-  }
   framebuffers_.clear();
-  shadowmap_framebuffers_.clear();
 
   // Destroy pipelines and render passes
   vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_lines_pipeline_, nullptr);
-  vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);
   vkDestroyRenderPass(device_, render_pass_, nullptr);
-  vkDestroyRenderPass(device_, depthmap_render_pass_, nullptr);
 
   // Destroy resources
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     vkDestroyImageView(device_, depth_image_views_[frame_i], nullptr);
     vkFreeMemory(device_, depth_memory_[frame_i], nullptr);
     vkDestroyImage(device_, depth_images_[frame_i], nullptr);
-
-    for (uint32_t shadowmap_i = 0; shadowmap_i < Scene::kMaxDirectionalLights;
-         shadowmap_i++) {
-      vkDestroyImageView(device_, shadowmap_image_views_[frame_i][shadowmap_i],
-                         nullptr);
-      vkFreeMemory(device_, shadowmap_memory_[frame_i][shadowmap_i], nullptr);
-      vkDestroyImage(device_, shadowmap_images_[frame_i][shadowmap_i], nullptr);
-    }
-    shadowmap_image_views_[frame_i].clear();
-    shadowmap_memory_[frame_i].clear();
-    shadowmap_images_[frame_i].clear();
-
     vkDestroyImageView(device_, swapchain_image_views_[frame_i], nullptr);
   }
   depth_image_views_.clear();
   depth_memory_.clear();
   depth_images_.clear();
-  shadowmap_image_views_.clear();
-  shadowmap_images_.clear();
-  swapchain_image_views_.clear();
 
   vkDestroySwapchainKHR(device_, swapchain_, nullptr);
   swapchain_ = VK_NULL_HANDLE;
@@ -376,14 +383,9 @@ void Application::Renderer::RecreateSwapchain() {
   DestroySwapchain();
   CreateSwapchain();
   CreateDepthResources();
-  CreateShadowmapResources();
-  if (scene_ != nullptr) {
-    CreateDirectionalLightShadowmapSampler();
-    WriteDescriptorSets();
-  }
-  CreateRenderPasses();
-  CreatePipelines();
-  CreateFramebuffers();
+  CreateRenderPasses(false);
+  CreatePipelines(false);
+  CreateFramebuffers(false);
 }
 void Application::Renderer::CreatePipelineCache() {
   VkPipelineCacheCreateInfo pipeline_cache_ci{};
@@ -396,19 +398,19 @@ void Application::Renderer::CreatePipelineCache() {
                                                   nullptr, &pipeline_cache_);
   ASSERT(create_result == VK_SUCCESS, "Failed to create pipeline cache!");
 }
-void Application::Renderer::CreatePipelines() {
+void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateGraphicsPipeline();
   CreateDebugDrawPipeline();
   CreateDebugDrawLinesPipeline();
-  CreateDepthmapPipeline();
+  if (include_fixed_size) CreateDepthmapPipeline();
 }
-void Application::Renderer::CreateRenderPasses() {
+void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
   CreateGraphicsRenderPass();
-  CreateDepthmapRenderPass();
+  if(include_fixed_size) CreateDepthmapRenderPass();
 }
-void Application::Renderer::CreateFramebuffers() {
+void Application::Renderer::CreateFramebuffers(bool include_fixed_size) {
   CreateGraphicsFramebuffers();
-  CreateShadowmapFramebuffers();
+  if (include_fixed_size) CreateDirectionalShadowmapFramebuffers();
 }
 std::vector<char> Application::Renderer::ReadFile(const std::string& path) {
 
