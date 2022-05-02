@@ -5,31 +5,9 @@
 
 #include <catalyst/scene/debugdrawobject.h>
 #include <catalyst/scene/sceneobject.h>
+#include <catalyst/scene/resource.h>
 
-namespace catalyst {
-struct Vertex {
-  glm::vec3 position;
-  glm::vec3 normal;
-  glm::vec2 uv;
-};
-struct Mesh {
-  std::vector<Vertex> vertices;
-  std::vector<uint32_t> indices;
-  uint32_t material_id;
-};
-class Material {
- public:
-  glm::vec3 albedo_;
-  float reflectance_;
-  float metallic_;
-  float roughness_;
-  PropertyManager property_manager_;
-  Material();
-};
-struct Texture {
-  std::string name;
-  std::string path;
-};
+namespace catalyst{
 enum class CameraType : uint32_t {
   kPerspective = 0,
   kOrthographic = 1,
@@ -95,7 +73,7 @@ class Scene {
   std::map<std::string,SceneObject*> name_map_;
   inline bool CheckNameExists(const std::string& s);
   std::string GetAvailableName(const std::string& prefix);
-  void CreatePrimitives();
+  void CreatePrimitiveMeshes();
   void CreatePrimitiveMaterials();
   Aabb ComputeAabb(const SceneObject* scene_object) const;
   void AabbDfs(const SceneObject* focus, Aabb& aabb,

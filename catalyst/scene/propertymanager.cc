@@ -14,6 +14,9 @@ PropertyManager::~PropertyManager() {
       case PropertyType::kFloat:
         delete static_cast<FloatProperty*>(prop);
         break;
+      case PropertyType::kString:
+        delete static_cast<StringProperty*>(prop);
+        break;
       case PropertyType::kVec3:
         delete static_cast<Vec3Property*>(prop);
         break;
@@ -38,6 +41,13 @@ void PropertyManager::AddFloatProperty(const std::string& property_name,
                                        float max_value) {
   FloatProperty* prop =
       new FloatProperty(property_name, getter, setter, min_value, max_value);
+  properties_.push_back(prop);
+}
+void PropertyManager::AddStringProperty(
+    const std::string& property_name, std::function<std::string()> getter,
+    std::function<void(std::string)> setter) {
+  StringProperty* prop =
+      new StringProperty(property_name, getter, setter);
   properties_.push_back(prop);
 }
 void PropertyManager::AddVec3Property(

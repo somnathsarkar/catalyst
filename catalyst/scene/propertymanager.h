@@ -94,6 +94,9 @@ class PropertyManager {
                         std::function<float()> getter,
                         std::function<void(float)> setter,
                         float min_value = 0.0f, float max_value = 1.0f);
+  void AddStringProperty(const std::string& property_name,
+                         std::function<std::string()> getter,
+                         std::function<void(std::string)> setter);
   void AddVec3Property(const std::string& property_name,
                        std::function<glm::vec3()> getter,
                        std::function<void(glm::vec3)> setter,

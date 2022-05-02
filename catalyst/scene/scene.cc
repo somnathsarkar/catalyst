@@ -15,7 +15,7 @@ namespace catalyst {
 Scene::Scene() {
   root_ = new SceneObject("root");
   name_map_["root"] = root_;
-  CreatePrimitives();
+  CreatePrimitiveMeshes();
   CreatePrimitiveMaterials();
 }
 Scene::~Scene() { delete root_; }
@@ -88,14 +88,16 @@ inline bool Scene::CheckNameExists(const std::string& s) {
     off_i++;
   }
 }
-void Scene::CreatePrimitives() {
+void Scene::CreatePrimitiveMeshes() {
   // Empty
-  meshes_.emplace_back();
+  meshes_.emplace_back(
+      kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kEmpty)]);
   Mesh& empty = meshes_.back();
   empty.vertices.clear();
   empty.indices.clear();
   // Cube
-  meshes_.emplace_back();
+  meshes_.emplace_back(
+      kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kCube)]);
   Mesh& cube = meshes_.back();
   cube.vertices = {
       {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.875f, 0.5f}},
@@ -138,7 +140,8 @@ void Scene::CreatePrimitives() {
   std::iota(cube.indices.begin(), cube.indices.end(), 0);
   cube.material_id = 0;
   // Teapot
-  meshes_.emplace_back();
+  meshes_.emplace_back(
+      kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kTeapot)]);
   Mesh& teapot = meshes_.back();
   Assimp::Importer *importer = new Assimp::Importer();
   const aiScene* teapot_scene = importer->ReadFile(
@@ -164,7 +167,8 @@ void Scene::CreatePrimitives() {
   std::iota(teapot.indices.begin(), teapot.indices.end(), 0);
   teapot.material_id = 0;
   // Bunny 
-  meshes_.emplace_back();
+  meshes_.emplace_back(
+      kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kBunny)]);
   Mesh& bunny = meshes_.back();
   importer->FreeScene();
   const aiScene* bunny_scene =
@@ -197,7 +201,7 @@ void Scene::CreatePrimitives() {
   }
 }
 void Scene::CreatePrimitiveMaterials() {
-  materials_.emplace_back();
+  materials_.emplace_back("Standard");
   Material& standard = materials_.back();
   standard.albedo_ = glm::vec3(1.0f, 1.0f, 1.0f);
   standard.reflectance_ = 1.0f;
@@ -274,28 +278,5 @@ glm::mat4 Camera::GetPerspectiveTransform(uint32_t screen_width,
 glm::mat4 Camera::GetOrthographicTransform(uint32_t screen_width,
                                            uint32_t screen_height) const{
   ASSERT(false, "Not yet implemented!");
-}
-Material::Material() : albedo_(1.0f), reflectance_(1.0f), metallic_(0.0f), roughness_(0.0f) {
-  std::function<glm::vec3()> color_getter = [this]() -> glm::vec3 {
-    return this->albedo_;
-  };
-  std::function<void(glm::vec3)> color_setter =
-      [this](glm::vec3 new_value) -> void { this->albedo_ = new_value; };
-  std::function<float()> metal_getter = [this]() -> float {
-    return this->metallic_;
-  };
-  std::function<void(float)> metal_setter = [this](float new_value) -> void {
-    this->metallic_ = new_value;
-  };
-  std::function<float()> rough_getter = [this]() -> float {
-    return this->roughness_;
-  };
-  std::function<void(float)> rough_setter = [this](float new_value) -> void {
-    this->roughness_ = new_value;
-  };
-  property_manager_.AddVec3Property("Color", color_getter, color_setter, 0.0f,
-                                    1.0f);
-  property_manager_.AddFloatProperty("Metallic", metal_getter, metal_setter);
-  property_manager_.AddFloatProperty("Roughness", rough_getter, rough_setter);
 }
 }  // namespace catalyst

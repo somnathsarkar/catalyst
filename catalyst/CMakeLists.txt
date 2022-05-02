@@ -30,8 +30,6 @@ target_sources(catalyst PRIVATE
 "time/timemanager.h"
 "scene/sceneobject.h"
 "scene/sceneobject.cc"
-"scene/camera.h"
-"scene/camera.cc"
 "scene/scene.h"
 "scene/scene.cc"
 "input/inputmanager.h"
@@ -41,7 +39,7 @@ target_sources(catalyst PRIVATE
 "scene/transform.h"
 "scene/transform.cc"
 "scene/propertymanager.h"
-"scene/propertymanager.cc")
+"scene/propertymanager.cc" "scene/resource.h" "scene/resource.cc")
 
 target_shader_pairs(catalyst "phong" "debugdraw" "depthmap" "pbr")
 
