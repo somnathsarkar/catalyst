@@ -13,6 +13,13 @@ size_t Application::Renderer::DirectionalLightUniform::GetSize() {
   return sizeof(DirectionalLight) * Scene::kMaxDirectionalLights +
          sizeof(uint32_t);
 }
+Application::Renderer::MaterialUniformBlock::MaterialUniformBlock()
+    : materials_(static_cast<size_t>(Scene::kMaxMaterials)),
+      material_count_(0) {}
+size_t Application::Renderer::MaterialUniformBlock::GetSize() {
+  return sizeof(MaterialUniformBlock) * Scene::kMaxMaterials +
+         sizeof(uint32_t);
+}
 void Application::Renderer::LoadScene(const Scene& scene) {
   scene_ = &scene;
   scene_resource_details_ = {0};
@@ -83,134 +90,6 @@ void Application::Renderer::CreateDirectionalLightUniformBuffer() {
             VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
   }
 }
-void Application::Renderer::WriteDescriptorSets() {
-  std::vector<VkDescriptorBufferInfo> set_bis;
-  set_bis.resize(frame_count_);
-  std::vector<VkWriteDescriptorSet> set_wis;
-  set_wis.resize(frame_count_);
-  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
-    VkDescriptorBufferInfo& set_bi = set_bis[frame_i];
-    set_bi.buffer = uniform_buffers_[frame_i];
-    set_bi.offset = 0;
-    set_bi.range = VK_WHOLE_SIZE;
-    VkWriteDescriptorSet& set_wi = set_wis[frame_i];
-    set_wi.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    set_wi.pNext = nullptr;
-    set_wi.dstSet = descriptor_sets_[frame_i];
-    set_wi.dstBinding = 0;
-    set_wi.dstArrayElement = 0;
-    set_wi.descriptorCount = 1;
-    set_wi.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    set_wi.pBufferInfo = &set_bis[frame_i];
-  }
-  vkUpdateDescriptorSets(device_, frame_count_, set_wis.data(), 0, nullptr);
-
-  std::vector<std::vector<VkDescriptorImageInfo>> shadow_image_infos;
-  shadow_image_infos.resize(frame_count_);
-  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
-    shadow_image_infos[frame_i].resize(Scene::kMaxDirectionalLights);
-    for (uint32_t shadow_i = 0; shadow_i < Scene::kMaxDirectionalLights;
-         shadow_i++) {
-      VkDescriptorImageInfo& set_si = shadow_image_infos[frame_i][shadow_i];
-      set_si.sampler = sampler_;
-      set_si.imageView = shadowmap_image_views_[frame_i][shadow_i];
-      set_si.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    }
-    VkWriteDescriptorSet& set_wi = set_wis[frame_i];
-    set_wi.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    set_wi.pNext = nullptr;
-    set_wi.dstSet = descriptor_sets_[frame_i];
-    set_wi.dstBinding = 1;
-    set_wi.dstArrayElement = 0;
-    set_wi.descriptorCount = Scene::kMaxDirectionalLights;
-    set_wi.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    set_wi.pBufferInfo = nullptr;
-    set_wi.pImageInfo = shadow_image_infos[frame_i].data();
-  }
-  vkUpdateDescriptorSets(device_, frame_count_, set_wis.data(), 0, nullptr);
-}
-uint32_t Application::Renderer::SelectMemoryType(const VkMemoryRequirements& mem_reqs, const VkMemoryPropertyFlags& req_props) {
-  bool mem_found = false;
-  uint32_t mem_index = -1;
-  for (uint32_t mem_i = 0; mem_i < mem_props_.memoryTypeCount; mem_i++) {
-    if ((mem_reqs.memoryTypeBits >> mem_i)&1 &&
-        (mem_props_.memoryTypes[mem_i].propertyFlags & req_props) == req_props) {
-      mem_found = true;
-      mem_index = mem_i;
-    }
-  }
-  ASSERT(mem_found, "Could not find suitable memory type!");
-  return mem_index;
-}
-void Application::Renderer::CreateBuffer(
-    VkBuffer& buffer, VkDeviceMemory& memory, const VkDeviceSize& size,
-    const VkBufferUsageFlags& usage, const VkMemoryPropertyFlags& req_props) {
-  VkBufferCreateInfo buffer_ci{};
-  buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  buffer_ci.pNext = nullptr;
-  buffer_ci.flags = 0;
-  buffer_ci.size = size;
-  buffer_ci.usage = usage;
-  buffer_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  buffer_ci.queueFamilyIndexCount = 1;
-  buffer_ci.pQueueFamilyIndices =
-      &queue_family_indices_.transfer_queue_index_.value();
-  VkResult create_result =
-      vkCreateBuffer(device_, &buffer_ci, nullptr, &buffer);
-  ASSERT(create_result == VK_SUCCESS, "Failed to create buffer!");
-
-  VkMemoryRequirements mem_reqs{};
-  vkGetBufferMemoryRequirements(device_, buffer, &mem_reqs);
-
-  VkMemoryAllocateInfo memory_ai{};
-  memory_ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  memory_ai.pNext = nullptr;
-  memory_ai.allocationSize = mem_reqs.size;
-  memory_ai.memoryTypeIndex = SelectMemoryType(mem_reqs, req_props);
-  VkResult alloc_result = vkAllocateMemory(device_, &memory_ai, nullptr, &memory);
-  ASSERT(alloc_result == VK_SUCCESS, "Failed to allocate memory!");
-
-  VkResult bind_result = vkBindBufferMemory(device_, buffer, memory, 0);
-  ASSERT(bind_result == VK_SUCCESS, "Failed to bind memory to buffer!");
-}
-void Application::Renderer::BeginSingleUseCommandBuffer(VkCommandBuffer& cmd) {
-  VkCommandBufferAllocateInfo cmd_ai{};
-  cmd_ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  cmd_ai.pNext = nullptr;
-  cmd_ai.commandPool = command_pool_;
-  cmd_ai.commandBufferCount = 1;
-  cmd_ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  VkResult alloc_result = vkAllocateCommandBuffers(device_, &cmd_ai, &cmd);
-  ASSERT(alloc_result == VK_SUCCESS,
-         "Failed to allocate single use command buffer!");
-
-  VkCommandBufferBeginInfo cmd_bi{};
-  cmd_bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmd_bi.pNext = nullptr;
-  cmd_bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-  cmd_bi.pInheritanceInfo = nullptr;
-  VkResult begin_result = vkBeginCommandBuffer(cmd, &cmd_bi);
-  ASSERT(begin_result == VK_SUCCESS, "Failed to begin recording single use command buffer!");
-}
-void Application::Renderer::EndSingleUseCommandBuffer(VkCommandBuffer& cmd) {
-  vkEndCommandBuffer(cmd);
-  
-  VkSubmitInfo cmd_si{};
-  cmd_si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  cmd_si.pNext = nullptr;
-  cmd_si.commandBufferCount = 1;
-  cmd_si.pCommandBuffers = &cmd;
-  cmd_si.waitSemaphoreCount = 0;
-  cmd_si.pWaitSemaphores = nullptr;
-  cmd_si.pWaitDstStageMask = 0;
-  cmd_si.signalSemaphoreCount = 0;
-  cmd_si.pSignalSemaphores = nullptr;
-  VkResult submit_result =
-      vkQueueSubmit(graphics_queue_, 1, &cmd_si, VK_NULL_HANDLE);
-  vkDeviceWaitIdle(device_);
-
-  vkFreeCommandBuffers(device_, command_pool_, 1, &cmd);
-}
 void Application::Renderer::UnloadScene() {
   ASSERT(scene_ != nullptr, "No scene loaded!");
   vkDeviceWaitIdle(device_);
@@ -231,6 +110,19 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
   details.push_constants.world_to_view_transform = glm::mat4(1.0f);
   details.push_constants.view_to_clip_transform = glm::mat4(1.0f);
   details.directional_light_uniform.light_count_ = 0;
+  details.material_uniform_block.material_count_ =
+      static_cast<uint32_t>(scene_->materials_.size());
+  for (uint32_t mat_i = 0;
+       mat_i < details.material_uniform_block.material_count_; mat_i++) {
+    MaterialUniform& mat_uniform =
+        details.material_uniform_block.materials_[mat_i];
+    const Material& mat = scene_->materials_[mat_i];
+    details.material_uniform_block.materials_[mat_i].color = glm::vec4(mat.albedo_,0.0f);
+    details.material_uniform_block.materials_[mat_i].reflectance =
+        mat.reflectance_;
+    details.material_uniform_block.materials_[mat_i].metallic = mat.metallic_;
+    details.material_uniform_block.materials_[mat_i].roughness = mat.roughness_;
+  }
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
   DrawSceneShadowmaps(cmd, frame_i, details);
@@ -249,6 +141,7 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
                           &descriptor_sets_[frame_i], 0, nullptr);
   BeginGraphicsRenderPass(cmd, image_i);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
+
   void* uniform_data;
   vkMapMemory(device_, uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
               &uniform_data);
@@ -259,6 +152,16 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
   memcpy(static_cast<char*>(uniform_data)+light_array_size, &details.directional_light_uniform.light_count_,
          sizeof(uint32_t));
   vkUnmapMemory(device_, uniform_memory_[frame_i]);
+
+  void* material_uniform_data;
+  vkMapMemory(device_, material_uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
+              &material_uniform_data);
+  size_t material_array_size = Scene::kMaxMaterials * sizeof(MaterialUniform);
+  memcpy(material_uniform_data, details.material_uniform_block.materials_.data(), material_array_size);
+  memcpy(static_cast<char*>(uniform_data) + material_array_size,
+         &details.material_uniform_block.material_count_, sizeof(uint32_t));
+  vkUnmapMemory(device_, material_uniform_memory_[frame_i]);
+
   DrawSceneMeshes(cmd, graphics_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
 
   if (debug_enabled_) {
@@ -282,6 +185,10 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
                          offsetof(PushConstantData, model_to_world_transform),
                          sizeof(details.push_constants.model_to_world_transform),
                          &model_transform);
+      vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_VERTEX_BIT,
+                         offsetof(PushConstantData, material_id),
+                         sizeof(details.push_constants.material_id),
+                         &mesh.material_id);
       vkCmdDraw(cmd, static_cast<uint32_t>(mesh.vertices.size()), 1,
                 scene_->offsets_[mesh_id], 0);
       break;

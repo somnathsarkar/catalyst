@@ -46,6 +46,8 @@ void Application::Renderer::StartUp() {
   CreateDebugDrawResources();
   CreateDirectionalLightUniformBuffer();
   CreateDirectionalShadowmapResources();
+  CreateMaterialUniformBuffer();
+  CreateTextureResources();
   WriteDescriptorSets();
 
   CreateFramebuffers();
@@ -93,6 +95,15 @@ void Application::Renderer::LateShutDown() {
   shadowmap_image_views_.clear();
   shadowmap_memory_.clear();
   shadowmap_images_.clear();
+
+  for (uint32_t texture_i = 0; texture_i < Scene::kMaxTextures; texture_i++) {
+    vkDestroyImageView(device_, texture_image_views_[texture_i], nullptr);
+    vkFreeMemory(device_, texture_memory_[texture_i], nullptr);
+    vkDestroyImage(device_, texture_images_[texture_i], nullptr);
+  }
+  texture_image_views_.clear();
+  texture_images_.clear();
+  texture_memory_.clear();
 
   // Destroy fixed size pipelines
   vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);

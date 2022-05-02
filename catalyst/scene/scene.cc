@@ -16,6 +16,7 @@ Scene::Scene() {
   root_ = new SceneObject("root");
   name_map_["root"] = root_;
   CreatePrimitives();
+  CreatePrimitiveMaterials();
 }
 Scene::~Scene() { delete root_; }
 MeshObject* Scene::AddPrimitive(SceneObject* parent, PrimitiveType type) {
@@ -135,6 +136,7 @@ void Scene::CreatePrimitives() {
       {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.375f, 0.5f}}};
   cube.indices.resize(cube.vertices.size());
   std::iota(cube.indices.begin(), cube.indices.end(), 0);
+  cube.material_id = 0;
   // Teapot
   meshes_.emplace_back();
   Mesh& teapot = meshes_.back();
@@ -160,6 +162,7 @@ void Scene::CreatePrimitives() {
   }
   teapot.indices.resize(teapot.vertices.size());
   std::iota(teapot.indices.begin(), teapot.indices.end(), 0);
+  teapot.material_id = 0;
   // Bunny 
   meshes_.emplace_back();
   Mesh& bunny = meshes_.back();
@@ -185,6 +188,7 @@ void Scene::CreatePrimitives() {
   }
   bunny.indices.resize(bunny.vertices.size());
   std::iota(bunny.indices.begin(), bunny.indices.end(), 0);
+  bunny.material_id = 0;
   // Offsets
   uint32_t current_offset = 0;
   for (Mesh& mesh : meshes_) {
@@ -192,7 +196,14 @@ void Scene::CreatePrimitives() {
     current_offset += static_cast<uint32_t>(mesh.vertices.size());
   }
 }
-
+void Scene::CreatePrimitiveMaterials() {
+  materials_.emplace_back();
+  Material& standard = materials_.back();
+  standard.albedo_ = glm::vec3(1.0f, 1.0f, 1.0f);
+  standard.reflectance_ = 1.0f;
+  standard.metallic_ = 1.0f;
+  standard.roughness_ = 0.1f;
+}
 Aabb Scene::ComputeAabb(const SceneObject* scene_object) const {
   glm::mat4 parent_transform = GetParentTransform(scene_object);
   Aabb aabb(
@@ -263,5 +274,28 @@ glm::mat4 Camera::GetPerspectiveTransform(uint32_t screen_width,
 glm::mat4 Camera::GetOrthographicTransform(uint32_t screen_width,
                                            uint32_t screen_height) const{
   ASSERT(false, "Not yet implemented!");
+}
+Material::Material() : albedo_(1.0f), reflectance_(1.0f), metallic_(0.0f), roughness_(0.0f) {
+  std::function<glm::vec3()> color_getter = [this]() -> glm::vec3 {
+    return this->albedo_;
+  };
+  std::function<void(glm::vec3)> color_setter =
+      [this](glm::vec3 new_value) -> void { this->albedo_ = new_value; };
+  std::function<float()> metal_getter = [this]() -> float {
+    return this->metallic_;
+  };
+  std::function<void(float)> metal_setter = [this](float new_value) -> void {
+    this->metallic_ = new_value;
+  };
+  std::function<float()> rough_getter = [this]() -> float {
+    return this->roughness_;
+  };
+  std::function<void(float)> rough_setter = [this](float new_value) -> void {
+    this->roughness_ = new_value;
+  };
+  property_manager_.AddVec3Property("Color", color_getter, color_setter, 0.0f,
+                                    1.0f);
+  property_manager_.AddFloatProperty("Metallic", metal_getter, metal_setter);
+  property_manager_.AddFloatProperty("Roughness", rough_getter, rough_setter);
 }
 }  // namespace catalyst

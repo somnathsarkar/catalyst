@@ -15,6 +15,20 @@ struct Vertex {
 struct Mesh {
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
+  uint32_t material_id;
+};
+class Material {
+ public:
+  glm::vec3 albedo_;
+  float reflectance_;
+  float metallic_;
+  float roughness_;
+  PropertyManager property_manager_;
+  Material();
+};
+struct Texture {
+  std::string name;
+  std::string path;
 };
 enum class CameraType : uint32_t {
   kPerspective = 0,
@@ -44,10 +58,18 @@ enum class PrimitiveType {
 const std::string kPrimitiveNames[] = {"Empty", "Cube", "Teapot", "Bunny"};
 class Scene {
  public:
-  static const uint32_t kMaxDirectionalLights = 10;
+  static const uint32_t kMaxVertices = 1000000;
+  static const uint32_t kMaxDebugDrawVertices = 1024;
+  static const uint32_t kMaxDirectionalLights = 16;
+  static const uint32_t kMaxShadowmapResolution = 1024;
+  static const uint32_t kMaxTextures = 16;
+  static const uint32_t kMaxTextureResolution = 2048;
+  static const uint32_t kMaxMaterials = 128;
 
   SceneObject* root_;
   std::vector<Mesh> meshes_;
+  std::vector<Material> materials_;
+  std::vector<Texture> textures_;
   std::vector<uint32_t> offsets_;
   std::vector<Camera> cameras_;
   std::vector<DebugDrawObject*> debugdraw_objects_;
@@ -74,6 +96,7 @@ class Scene {
   inline bool CheckNameExists(const std::string& s);
   std::string GetAvailableName(const std::string& prefix);
   void CreatePrimitives();
+  void CreatePrimitiveMaterials();
   Aabb ComputeAabb(const SceneObject* scene_object) const;
   void AabbDfs(const SceneObject* focus, Aabb& aabb,
                glm::mat4 transform = glm::mat4(1.0f)) const;

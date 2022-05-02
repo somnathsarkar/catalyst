@@ -39,7 +39,7 @@ void main() {
         vec3 L = normalize(world_light_dir);
         vec3 N = normalize(worldNormal);
         vec3 V = normalize(worldCamera);
-        vec3 R = reflect(L,N);
+        vec3 R = reflect(-L,N);
         //float shadow_bias = max(0.05f*(1.0f-dot(N,L)),0.005f);
         float shadow_bias = 0.001f;
         float light_shadow = 0.0f;

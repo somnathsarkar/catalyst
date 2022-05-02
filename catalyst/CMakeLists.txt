@@ -19,6 +19,7 @@ target_sources(catalyst PRIVATE
 "render/renderer_debugdraw.cc"
 "render/renderer_descriptor.cc"
 "render/renderer_depthmap.cc"
+"render/renderer_utilities.cc"
 "application/application.h"
 "application/application.cc"
 "window/window.h"
@@ -42,7 +43,7 @@ target_sources(catalyst PRIVATE
 "scene/propertymanager.h"
 "scene/propertymanager.cc")
 
-target_shader_pairs(catalyst "phong" "debugdraw" "depthmap")
+target_shader_pairs(catalyst "phong" "debugdraw" "depthmap" "pbr")
 
 if(MSVC)
   target_compile_options(catalyst PUBLIC "/Zi")

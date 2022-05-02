@@ -4,9 +4,9 @@ namespace catalyst {
 void Application::Renderer::CreateDebugDrawResources() {
   debugdraw_buffer_.resize(frame_count_);
   debugdraw_memory_.resize(frame_count_);
-  debugdraw_buffer_size_ = sizeof(Vertex) * Scene::kMaxDebugDrawVertices;
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
-    CreateBuffer(debugdraw_buffer_[frame_i], debugdraw_memory_[frame_i], debugdraw_buffer_size_,
+    CreateBuffer(debugdraw_buffer_[frame_i], debugdraw_memory_[frame_i],
+                 sizeof(Vertex) * Scene::kMaxDebugDrawVertices,
                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);

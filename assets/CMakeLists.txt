@@ -20,5 +20,6 @@ function(target_shader_pairs TARGET)
 endfunction()
 
 add_shader_pair("phong")
+add_shader_pair("pbr")
 add_shader_pair("debugdraw")
 add_shader_pair("depthmap")

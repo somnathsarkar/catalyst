@@ -8,6 +8,12 @@ PropertyManager::~PropertyManager() {
   for (uint32_t prop_i = 0; prop_i < properties_.size(); prop_i++) {
     Property* prop = properties_[prop_i];
     switch (prop->type_) {
+      case PropertyType::kBoolean:
+        delete static_cast<BooleanProperty*>(prop);
+        break;
+      case PropertyType::kFloat:
+        delete static_cast<FloatProperty*>(prop);
+        break;
       case PropertyType::kVec3:
         delete static_cast<Vec3Property*>(prop);
         break;
@@ -18,7 +24,23 @@ PropertyManager::~PropertyManager() {
   }
   properties_.clear();
 }
-void catalyst::PropertyManager::AddVec3Property(
+void PropertyManager::AddBooleanProperty(const std::string& property_name,
+                                         std::function<bool()> getter,
+                                         std::function<void(bool)> setter) {
+  BooleanProperty* prop =
+      new BooleanProperty(property_name, getter, setter);
+  properties_.push_back(prop);
+}
+void PropertyManager::AddFloatProperty(const std::string& property_name,
+                                       std::function<float()> getter,
+                                       std::function<void(float)> setter,
+                                       float min_value,
+                                       float max_value) {
+  FloatProperty* prop =
+      new FloatProperty(property_name, getter, setter, min_value, max_value);
+  properties_.push_back(prop);
+}
+void PropertyManager::AddVec3Property(
     const std::string& property_name, std::function<glm::vec3()> getter,
     std::function<void(glm::vec3)> setter, float min_value, float max_value) {
   Vec3Property* prop =
@@ -28,7 +50,7 @@ void catalyst::PropertyManager::AddVec3Property(
 uint32_t PropertyManager::PropertyCount() const {
   return static_cast<uint32_t>(properties_.size());
 }
-Property* catalyst::PropertyManager::GetProperty(
+Property* PropertyManager::GetProperty(
     uint32_t property_index) const {
   return properties_[property_index];
 }
@@ -47,11 +69,14 @@ IntegerProperty::IntegerProperty(const std::string& property_name,
       getter_(getter),
       setter_(setter) {}
 FloatProperty::FloatProperty(const std::string& property_name,
-                                       std::function<float()> getter,
-                             std::function<void(float)> setter)
+                             std::function<float()> getter,
+                             std::function<void(float)> setter, float min_value,
+                             float max_value)
     : Property(property_name, PropertyType::kFloat),
       getter_(getter),
-      setter_(setter) {}
+      setter_(setter),
+      min_value_(min_value),
+      max_value_(max_value) {}
 StringProperty::StringProperty(
     const std::string& property_name, std::function<std::string()> getter,
     std::function<void(std::string)> setter)

@@ -50,10 +50,13 @@ class FloatProperty : public Property {
  public:
   std::function<float()> getter_;
   std::function<void(float)> setter_;
+  float min_value_;
+  float max_value_;
 
  protected:
   FloatProperty(const std::string& property_name, std::function<float()> getter,
-                std::function<void(float)> setter);
+                std::function<void(float)> setter, float min_value = 0.0f,
+                float max_value = 1.0f);
 };
 class StringProperty : public Property {
   friend class PropertyManager;
@@ -84,6 +87,13 @@ class PropertyManager {
  public:
   PropertyManager();
   ~PropertyManager();
+  void AddBooleanProperty(const std::string& property_name,
+                          std::function<bool()> getter,
+                          std::function<void(bool)> setter);
+  void AddFloatProperty(const std::string& property_name,
+                        std::function<float()> getter,
+                        std::function<void(float)> setter,
+                        float min_value = 0.0f, float max_value = 1.0f);
   void AddVec3Property(const std::string& property_name,
                        std::function<glm::vec3()> getter,
                        std::function<void(glm::vec3)> setter,
