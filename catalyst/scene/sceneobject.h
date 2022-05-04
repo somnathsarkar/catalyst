@@ -8,6 +8,7 @@
 #include <catalyst/scene/propertymanager.h>
 
 namespace catalyst {
+class Scene;
 enum class SceneObjectType : uint32_t {
   kDefault = 0,
   kMesh = 1,
@@ -35,30 +36,32 @@ class SceneObject {
   std::string name_;
   bool external_;
 
-  SceneObject(const std::string& name);
+  SceneObject(Scene* scene, const std::string& name);
   ~SceneObject();
   // Uncopyable
   SceneObject(const SceneObject& a) = delete;
   const SceneObject& operator=(const SceneObject& a) = delete;
  private:
+  Scene* scene_;
 };
 class MeshObject : public SceneObject {
  public:
   uint32_t mesh_id_;
 
-  MeshObject(const std::string& name, uint32_t mesh_id);
+  MeshObject(Scene* scene, const std::string& name, uint32_t mesh_id);
 };
 class CameraObject : public SceneObject {
  public:
   uint32_t camera_id_;
 
-  CameraObject(const std::string& name, uint32_t camera_id);
+  CameraObject(Scene* scene, const std::string& name, uint32_t camera_id);
 };
 class DirectionalLightObject : public SceneObject {
  public:
   glm::vec3 color_;
 
-  DirectionalLightObject(const std::string& name, glm::vec3 color = glm::vec3(1.0f));
+  DirectionalLightObject(Scene* scene, const std::string& name,
+                         glm::vec3 color = glm::vec3(1.0f));
   static glm::mat4 GetViewToClipTransform();
 };
 }

@@ -27,18 +27,21 @@ void Application::Renderer::LoadScene(const Scene& scene) {
 }
 void Application::Renderer::LoadSceneResources() {
   LoadMeshes();
+  LoadTextures();
 }
 void Application::Renderer::LoadMeshes() {
+  uint32_t mesh_count = static_cast<uint32_t>(scene_->meshes_.size());
+  if (scene_resource_details_.mesh_count == mesh_count) return;
   VkCommandBuffer cmd;
   BeginSingleUseCommandBuffer(cmd);
   VkBuffer staging_buffer;
   VkDeviceMemory staging_memory;
   uint32_t buffer_size = 0;
   for (uint32_t mesh_i = scene_resource_details_.mesh_count;
-       mesh_i < static_cast<uint32_t>(scene_->meshes_.size()); mesh_i++) {
-    const Mesh& mesh = scene_->meshes_[mesh_i];
-    uint32_t mesh_size =
-        static_cast<uint32_t>(sizeof(mesh.vertices[0]) * mesh.vertices.size());
+       mesh_i < mesh_count; mesh_i++) {
+    const Mesh* mesh = scene_->meshes_[mesh_i];
+    uint32_t mesh_size = static_cast<uint32_t>(sizeof(mesh->vertices[0]) *
+                                               mesh->vertices.size());
     buffer_size += mesh_size;
   }
   CreateBuffer(staging_buffer, staging_memory, buffer_size,
@@ -47,13 +50,17 @@ void Application::Renderer::LoadMeshes() {
                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   void* data;
   vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &data);
-  uint32_t vertex_prefix = scene_resource_details_.vertex_count;
-  for (Mesh mesh : scene_->meshes_) {
-    uint32_t mesh_size =
-        static_cast<uint32_t>(sizeof(mesh.vertices[0]) * mesh.vertices.size());
-    memcpy(reinterpret_cast<char*>(data) + vertex_prefix, mesh.vertices.data(),
+  size_t vertex_prefix = scene_resource_details_.vertex_count;
+  size_t buffer_prefix = 0;
+  for (uint32_t mesh_i = scene_resource_details_.mesh_count;
+       mesh_i < mesh_count; mesh_i++) {
+    Mesh* mesh = scene_->meshes_[mesh_i];
+    size_t mesh_vertices = mesh->vertices.size();
+    size_t mesh_size = sizeof(Vertex) * mesh_vertices;
+    memcpy(reinterpret_cast<char*>(data) + buffer_prefix, mesh->vertices.data(),
            mesh_size);
-    vertex_prefix += mesh_size;
+    buffer_prefix += mesh_size;
+    vertex_prefix += mesh_vertices;
   }
   vkUnmapMemory(device_, staging_memory);
   VkBufferCopy buffer_cp{};
@@ -62,13 +69,20 @@ void Application::Renderer::LoadMeshes() {
   buffer_cp.size = buffer_size;
   vkCmdCopyBuffer(cmd, staging_buffer, vertex_buffer_, 1, &buffer_cp);
 
-  scene_resource_details_.vertex_count = vertex_prefix;
+  scene_resource_details_.vertex_count = static_cast<uint32_t>(vertex_prefix);
   scene_resource_details_.mesh_count =
       static_cast<uint32_t>(scene_->meshes_.size());
 
   EndSingleUseCommandBuffer(cmd);
   vkDestroyBuffer(device_, staging_buffer, nullptr);
   vkFreeMemory(device_, staging_memory, nullptr);
+}
+void Application::Renderer::LoadTextures() {
+  uint32_t tex_count = static_cast<uint32_t>(scene_->textures_.size());
+  if (scene_resource_details_.texture_count = tex_count) return;
+  for (uint32_t tex_i = scene_resource_details_.texture_count;
+       tex_i < tex_count; tex_i++) {
+  }
 }
 void Application::Renderer::CreateVertexBuffer() {
   CreateBuffer(
@@ -102,6 +116,7 @@ void Application::Renderer::UnloadScene() {
   scene_ = nullptr;
 }
 void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
+  LoadSceneResources();
   VkCommandBuffer& cmd = command_buffers_[frame_i];
   VkDeviceSize vertex_offsets[] = {static_cast<uint64_t>(0)};
   vkCmdBindVertexBuffers(cmd, 0, 1, &vertex_buffer_, vertex_offsets);
@@ -116,12 +131,13 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
        mat_i < details.material_uniform_block.material_count_; mat_i++) {
     MaterialUniform& mat_uniform =
         details.material_uniform_block.materials_[mat_i];
-    const Material& mat = scene_->materials_[mat_i];
-    details.material_uniform_block.materials_[mat_i].color = glm::vec4(mat.albedo_,0.0f);
+    const Material* mat = scene_->materials_[mat_i];
+    details.material_uniform_block.materials_[mat_i].color = glm::vec4(mat->albedo_,1.0f);
     details.material_uniform_block.materials_[mat_i].reflectance =
-        mat.reflectance_;
-    details.material_uniform_block.materials_[mat_i].metallic = mat.metallic_;
-    details.material_uniform_block.materials_[mat_i].roughness = mat.roughness_;
+        mat->reflectance_;
+    details.material_uniform_block.materials_[mat_i].metallic = mat->metallic_;
+    details.material_uniform_block.materials_[mat_i].roughness =
+        mat->roughness_;
   }
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
@@ -158,7 +174,7 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
               &material_uniform_data);
   size_t material_array_size = Scene::kMaxMaterials * sizeof(MaterialUniform);
   memcpy(material_uniform_data, details.material_uniform_block.materials_.data(), material_array_size);
-  memcpy(static_cast<char*>(uniform_data) + material_array_size,
+  memcpy(static_cast<char*>(material_uniform_data) + material_array_size,
          &details.material_uniform_block.material_count_, sizeof(uint32_t));
   vkUnmapMemory(device_, material_uniform_memory_[frame_i]);
 
@@ -179,7 +195,7 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
       const MeshObject* mesh_object =
           reinterpret_cast<const MeshObject*>(focus);
       const uint32_t mesh_id = mesh_object->mesh_id_;
-      const Mesh& mesh = scene_->meshes_[mesh_id];
+      const Mesh* mesh = scene_->meshes_[mesh_id];
       vkCmdPushConstants(cmd, layout,
                          VK_SHADER_STAGE_VERTEX_BIT,
                          offsetof(PushConstantData, model_to_world_transform),
@@ -188,8 +204,8 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
       vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_VERTEX_BIT,
                          offsetof(PushConstantData, material_id),
                          sizeof(details.push_constants.material_id),
-                         &mesh.material_id);
-      vkCmdDraw(cmd, static_cast<uint32_t>(mesh.vertices.size()), 1,
+                         &mesh->material_id);
+      vkCmdDraw(cmd, static_cast<uint32_t>(mesh->vertices.size()), 1,
                 scene_->offsets_[mesh_id], 0);
       break;
     }

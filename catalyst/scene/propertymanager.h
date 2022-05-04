@@ -14,6 +14,7 @@ enum class PropertyType {
   kFloat = 2,
   kString = 3,
   kVec3 = 4,
+  kNamedIndex = 5,
 };
 class Property {
   friend class PropertyManager;
@@ -40,10 +41,13 @@ class IntegerProperty : public Property {
  public:
   std::function<int()> getter_;
   std::function<void(int)> setter_;
+  int min_value_;
+  int max_value_;
 
  protected:
   IntegerProperty(const std::string& property_name, std::function<int()> getter,
-                  std::function<void(int)> setter);
+                  std::function<void(int)> setter, int min_value = -100,
+                  int max_value = 100);
 };
 class FloatProperty : public Property {
   friend class PropertyManager;
@@ -83,6 +87,19 @@ class Vec3Property : public Property {
                std::function<void(glm::vec3)> setter, float min_value = 0.0f,
                float max_value = 100.0f);
 };
+class NamedIndexProperty : public Property {
+  friend class PropertyManager;
+ public:
+  std::function<uint32_t()> getter_;
+  std::function<void(uint32_t)> setter_;
+  std::function<std::vector<std::string>()> name_getter_;
+
+  protected:
+  NamedIndexProperty(const std::string& property_name,
+                     std::function<uint32_t()> getter_,
+                     std::function<void(uint32_t)> setter_,
+                     std::function<std::vector<std::string>()> name_getter_);
+};
 class PropertyManager {
  public:
   PropertyManager();
@@ -90,6 +107,10 @@ class PropertyManager {
   void AddBooleanProperty(const std::string& property_name,
                           std::function<bool()> getter,
                           std::function<void(bool)> setter);
+  void AddIntegerProperty(const std::string& property_name,
+                          std::function<int()> getter,
+                          std::function<void(int)> setter, int min_value = -100,
+                          int max_value = 100);
   void AddFloatProperty(const std::string& property_name,
                         std::function<float()> getter,
                         std::function<void(float)> setter,
@@ -101,6 +122,10 @@ class PropertyManager {
                        std::function<glm::vec3()> getter,
                        std::function<void(glm::vec3)> setter,
                        float min_value = 0.0f, float max_value = 100.0f);
+  void AddNamedIndexProperty(
+      const std::string& property_name, std::function<uint32_t()> getter,
+      std::function<void(uint32_t)> setter,
+      std::function<std::vector<std::string>()> name_getter);
   uint32_t PropertyCount() const;
   Property* GetProperty(uint32_t property_index) const;
 

@@ -39,7 +39,7 @@ void EditorScript::Update(catalyst::Window& window, catalyst::Scene& scene) {
     }
     // Selection Highlighting
     if (editor_window.window_->selection_updated_) {
-      UpdateSelection(scene,editor_window.window_->selection_);
+      UpdateSelection(scene,editor_window.window_->object_selection_);
       editor_window.window_->selection_updated_ = false;
     }
   } catch (std::bad_cast e) {

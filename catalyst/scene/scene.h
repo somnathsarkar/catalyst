@@ -8,6 +8,7 @@
 #include <catalyst/scene/resource.h>
 
 namespace catalyst{
+class SceneObject;
 enum class CameraType : uint32_t {
   kPerspective = 0,
   kOrthographic = 1,
@@ -45,9 +46,9 @@ class Scene {
   static const uint32_t kMaxMaterials = 128;
 
   SceneObject* root_;
-  std::vector<Mesh> meshes_;
-  std::vector<Material> materials_;
-  std::vector<Texture> textures_;
+  std::vector<Mesh*> meshes_;
+  std::vector<Material*> materials_;
+  std::vector<Texture*> textures_;
   std::vector<uint32_t> offsets_;
   std::vector<Camera> cameras_;
   std::vector<DebugDrawObject*> debugdraw_objects_;
@@ -55,12 +56,22 @@ class Scene {
   Scene();
   ~Scene();
 
+  // Add Objects
   MeshObject* AddPrimitive(SceneObject* parent, PrimitiveType type);
   CameraObject* AddCamera(SceneObject* parent, CameraType type);
   DirectionalLightObject* AddDirectionalLight(
       SceneObject* parent, glm::vec3 color = glm::vec3(1.0f));
+  MeshObject* AddMeshObject(SceneObject* parent, Mesh* mesh);
+  SceneObject* AddResourceToScene(Resource* resource);
+
+  // Add Resources
+  Mesh* AddMesh(const std::string& name);
+  Material* AddMaterial(const std::string& name);
+  Texture* AddTexture(const std::string& name);
+  void DuplicateResource(const Resource* resource);
 
   SceneObject* GetObjectByName(const std::string& name) const;
+  Resource* GetResourceByName(const std::string& name);
 
   glm::mat4 GetParentTransform(const SceneObject* scene_object) const;
   Aabb ComputeAabb(const std::vector<const SceneObject*> scene_objects) const;
@@ -70,9 +81,12 @@ class Scene {
   const Scene& operator=(const Scene& a) = delete;
 
  private:
-  std::map<std::string,SceneObject*> name_map_;
-  inline bool CheckNameExists(const std::string& s);
-  std::string GetAvailableName(const std::string& prefix);
+  std::map<std::string, SceneObject*> object_name_map_;
+  std::map<std::string, Resource*> resource_name_map_;
+  inline bool CheckObjectNameExists(const std::string& s);
+  std::string GetAvailableObjectName(const std::string& prefix);
+  inline bool CheckResourceNameExists(const std::string& s);
+  std::string GetAvailableResourceName(const std::string& prefix);
   void CreatePrimitiveMeshes();
   void CreatePrimitiveMaterials();
   Aabb ComputeAabb(const SceneObject* scene_object) const;

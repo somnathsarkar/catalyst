@@ -48,4 +48,4 @@ target_sources(editor PRIVATE
 "window/qtscenetree.cc"
 "window/qtpropertiespanel.h"
 "window/qtpropertiespanel.cc"
-"../assets/theme/style.qrc")
+"../assets/theme/style.qrc" "window/qtresourcepanel.h" "window/qtresourcepanel.cc")

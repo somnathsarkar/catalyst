@@ -39,7 +39,9 @@ target_sources(catalyst PRIVATE
 "scene/transform.h"
 "scene/transform.cc"
 "scene/propertymanager.h"
-"scene/propertymanager.cc" "scene/resource.h" "scene/resource.cc")
+"scene/propertymanager.cc"
+"scene/resource.h"
+"scene/resource.cc")
 
 target_shader_pairs(catalyst "phong" "debugdraw" "depthmap" "pbr")
 

@@ -24,6 +24,7 @@ EditorWindow::QtWindow::QtSceneTree::QtSceneTree(QtWindow* window)
   layout_->addWidget(addbox_, 2, 0);
 }
 void EditorWindow::QtWindow::QtSceneTree::LoadScene() { treeview_->Populate(); }
+void EditorWindow::QtWindow::QtSceneTree::Update() { treeview_->Populate(); }
 EditorWindow::QtWindow::QtSceneTree::QtSceneSearchBox::QtSceneSearchBox(QtSceneTree* scene_tree)
     : scene_tree_(scene_tree) {}
 void EditorWindow::QtWindow::QtSceneTree::QtSceneSearchBox::changeEvent(QEvent* ev) {
@@ -75,8 +76,8 @@ void EditorWindow::QtWindow::QtSceneTree::QtSceneAddBox::ProcessAddCommand(AddOp
   }
 }
 EditorWindow::QtWindow::QtSceneTree::QtSceneTreeView::QtSceneTreeView(QtSceneTree* scene_tree)
-    : scene_tree_(scene_tree),tree_model_(nullptr) {
-  setSelectionMode(QAbstractItemView::ExtendedSelection);
+    : scene_tree_(scene_tree), tree_model_(nullptr) {
+  setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
   setDragDropMode(QAbstractItemView::DragDropMode::InternalMove);
 }
 void EditorWindow::QtWindow::QtSceneTree::QtSceneTreeView::Populate() {
@@ -96,13 +97,14 @@ void EditorWindow::QtWindow::QtSceneTree::QtSceneTreeView::Populate() {
 void EditorWindow::QtWindow::QtSceneTree::QtSceneTreeView::selectionChanged(
   const QItemSelection& selected, const QItemSelection& deselected) {
   QtWindow* window = (scene_tree_->window_);
-  std::vector<const catalyst::SceneObject*>& selection = window->selection_;
+  std::vector<const catalyst::SceneObject*>& selection = window->object_selection_;
   selection.clear();
   for (const QModelIndex& s_index : selectedIndexes()) {
     catalyst::SceneObject* s_object = ModelIndexToSceneObject(s_index);
     if (s_object != nullptr) selection.push_back(s_object);
   }
   window->selection_updated_ = true;
+  window->selection_type_ = SelectionType::kObject;
   scene_tree_->window_->properties_panel_->Update();
 }
 void EditorWindow::QtWindow::QtSceneTree::QtSceneTreeView::dropEvent(QDropEvent* drop_event) {

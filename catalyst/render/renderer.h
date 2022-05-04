@@ -57,6 +57,7 @@ class Application :: Renderer {
     float reflectance;
     float metallic;
     float roughness;
+    float pad;
   };
   class MaterialUniformBlock {
    public:

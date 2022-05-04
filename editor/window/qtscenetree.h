@@ -18,6 +18,7 @@ class EditorWindow::QtWindow::QtSceneTree final : public QWidget {
  public:
   explicit QtSceneTree(QtWindow* window);
   void LoadScene();
+  void Update();
  private:
   class QtSceneSearchBox : public QLineEdit {
    public:

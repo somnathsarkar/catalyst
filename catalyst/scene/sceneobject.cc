@@ -1,14 +1,14 @@
 #include <catalyst/scene/sceneobject.h>
 
 namespace catalyst {
-SceneObject::SceneObject(const std::string& name)
+SceneObject::SceneObject(Scene* scene, const std::string& name)
     : type_(SceneObjectType::kDefault),
       property_manager_(),
       transform_(),
       parent_(nullptr),
       children_(),
       name_(name),
-      external_(false) {
+      external_(false), scene_(scene) {
   std::function<glm::vec3()> trans_getter = [this]() -> glm::vec3 {
     return this->transform_.GetTranslation();
   };
@@ -40,17 +40,20 @@ SceneObject::~SceneObject() {
   children_.clear();
   parent_ = nullptr;
 }
-MeshObject::MeshObject(const std::string& name, uint32_t mesh_id) : SceneObject(name) {
+MeshObject::MeshObject(Scene* scene, const std::string& name, uint32_t mesh_id) : SceneObject(scene, name) {
   type_ = SceneObjectType::kMesh;
   mesh_id_ = mesh_id;
 }
-CameraObject::CameraObject(const std::string& name, uint32_t camera_id) : SceneObject(name){
+CameraObject::CameraObject(Scene* scene, const std::string& name,
+                           uint32_t camera_id)
+    : SceneObject(scene, name) {
   type_ = SceneObjectType::kCamera;
   camera_id_ = camera_id;
 }
-DirectionalLightObject::DirectionalLightObject(const std::string& name,
+DirectionalLightObject::DirectionalLightObject(Scene* scene,
+                                               const std::string& name,
                                                glm::vec3 color)
-    : SceneObject(name), color_(color) {
+    : SceneObject(scene, name), color_(color) {
   std::function<void(glm::vec3)> color_setter =
       [this](glm::vec3 new_value) -> void { this->color_ = new_value; };
   std::function<glm::vec3()> color_getter = [this]() -> glm::vec3 {

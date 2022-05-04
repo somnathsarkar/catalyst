@@ -11,6 +11,9 @@ PropertyManager::~PropertyManager() {
       case PropertyType::kBoolean:
         delete static_cast<BooleanProperty*>(prop);
         break;
+      case PropertyType::kInteger:
+        delete static_cast<IntegerProperty*>(prop);
+        break;
       case PropertyType::kFloat:
         delete static_cast<FloatProperty*>(prop);
         break;
@@ -19,6 +22,9 @@ PropertyManager::~PropertyManager() {
         break;
       case PropertyType::kVec3:
         delete static_cast<Vec3Property*>(prop);
+        break;
+      case PropertyType::kNamedIndex:
+        delete static_cast<NamedIndexProperty*>(prop);
         break;
       default:
         ASSERT(false, "Unhandled property type!");
@@ -50,6 +56,22 @@ void PropertyManager::AddStringProperty(
       new StringProperty(property_name, getter, setter);
   properties_.push_back(prop);
 }
+void PropertyManager::AddIntegerProperty(const std::string& property_name,
+                                         std::function<int()> getter,
+                                         std::function<void(int)> setter,
+                                         int min_value, int max_value) {
+  IntegerProperty* prop =
+      new IntegerProperty(property_name, getter, setter, min_value, max_value);
+  properties_.push_back(prop);
+}
+void PropertyManager::AddNamedIndexProperty(
+    const std::string& property_name, std::function<uint32_t()> getter,
+    std::function<void(uint32_t)> setter,
+    std::function<std::vector<std::string>()> name_getter) {
+  NamedIndexProperty* prop =
+      new NamedIndexProperty(property_name, getter, setter, name_getter);
+  properties_.push_back(prop);
+}
 void PropertyManager::AddVec3Property(
     const std::string& property_name, std::function<glm::vec3()> getter,
     std::function<void(glm::vec3)> setter, float min_value, float max_value) {
@@ -74,10 +96,12 @@ BooleanProperty::BooleanProperty(const std::string& property_name,
       setter_(setter) {}
 IntegerProperty::IntegerProperty(const std::string& property_name,
                                            std::function<int()> getter,
-                                 std::function<void(int)> setter)
+                                 std::function<void(int)> setter, int min_value, int max_value)
     : Property(property_name, PropertyType::kInteger),
       getter_(getter),
-      setter_(setter) {}
+      setter_(setter),
+      min_value_(min_value),
+      max_value_(max_value) {}
 FloatProperty::FloatProperty(const std::string& property_name,
                              std::function<float()> getter,
                              std::function<void(float)> setter, float min_value,
@@ -103,4 +127,12 @@ Vec3Property::Vec3Property(const std::string& property_name,
       min_value_(min_value),
       max_value_(max_value)
 {}
+NamedIndexProperty::NamedIndexProperty(
+    const std::string& property_name, std::function<uint32_t()> getter,
+    std::function<void(uint32_t)> setter,
+    std::function<std::vector<std::string>()> name_getter)
+    : Property(property_name, PropertyType::kNamedIndex),
+      getter_(getter),
+      setter_(setter),
+      name_getter_(name_getter) {}
 }  // namespace catalyst

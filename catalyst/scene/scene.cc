@@ -13,47 +13,132 @@
 
 namespace catalyst {
 Scene::Scene() {
-  root_ = new SceneObject("root");
-  name_map_["root"] = root_;
+  root_ = new SceneObject(this, "root");
+  object_name_map_["root"] = root_;
   CreatePrimitiveMeshes();
   CreatePrimitiveMaterials();
 }
 Scene::~Scene() { delete root_; }
 MeshObject* Scene::AddPrimitive(SceneObject* parent, PrimitiveType type) {
   std::string object_name =
-      GetAvailableName(kPrimitiveNames[static_cast<uint32_t>(type)]);
+      GetAvailableObjectName(kPrimitiveNames[static_cast<uint32_t>(type)]);
   MeshObject* mesh_object =
-      new MeshObject(object_name,
+      new MeshObject(this, object_name,
                      static_cast<uint32_t>(type));
   mesh_object->parent_ = parent;
   parent->children_.push_back(mesh_object);
-  name_map_[object_name] = mesh_object;
+  object_name_map_[object_name] = mesh_object;
   return mesh_object;
 }
 CameraObject* Scene::AddCamera(SceneObject* parent, CameraType type) {
   Camera camera;
   cameras_.push_back(camera);
   uint32_t camera_id = static_cast<uint32_t>(cameras_.size())-1;
-  std::string object_name = GetAvailableName("Camera");
-  CameraObject* camera_object = new CameraObject(object_name,camera_id);
+  std::string object_name = GetAvailableObjectName("Camera");
+  CameraObject* camera_object = new CameraObject(this, object_name,camera_id);
   camera_object->parent_ = parent;
   parent->children_.push_back(camera_object);
-  name_map_[object_name] = camera_object;
+  object_name_map_[object_name] = camera_object;
   return camera_object;
 }
 DirectionalLightObject* Scene::AddDirectionalLight(SceneObject* parent,
                                                    glm::vec3 color) {
   std::string object_name =
-      GetAvailableName("Directional Light");
+      GetAvailableObjectName("Directional Light");
   DirectionalLightObject* light_object =
-      new DirectionalLightObject(object_name, color);
+      new DirectionalLightObject(this, object_name, color);
   light_object->parent_ = parent;
   parent->children_.push_back(light_object);
-  name_map_[object_name] = light_object;
+  object_name_map_[object_name] = light_object;
   return light_object;
 }
+MeshObject* Scene::AddMeshObject(SceneObject* parent, Mesh* mesh) {
+  std::string object_name =
+      GetAvailableObjectName(mesh->name_);
+  uint32_t mesh_index = 0;
+  bool mesh_found = false;
+  for (uint32_t mesh_i = 0; mesh_i < static_cast<uint32_t>(meshes_.size());
+       mesh_i++) {
+    if (mesh == meshes_[mesh_i]) {
+      mesh_index = mesh_i;
+      mesh_found = true;
+      break;
+    }
+  }
+  ASSERT(mesh_found, "Could not find mesh!");
+  MeshObject* mesh_object =
+      new MeshObject(this, object_name, mesh_index);
+  mesh_object->parent_ = parent;
+  parent->children_.push_back(mesh_object);
+  object_name_map_[object_name] = mesh_object;
+  return mesh_object;
+}
+SceneObject* Scene::AddResourceToScene(Resource* resource) { 
+  switch (resource->type_) {
+    case ResourceType::kMesh: {
+      Mesh* mesh = static_cast<Mesh*>(resource);
+      return AddMeshObject(root_, mesh);
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+  return nullptr;
+}
+Mesh* Scene::AddMesh(const std::string& name) {
+  std::string mesh_name = GetAvailableResourceName(name);
+  Mesh* mesh = new Mesh(this, mesh_name);
+  meshes_.push_back(mesh);
+  resource_name_map_[mesh_name] = mesh;
+  return mesh;
+}
+Material* Scene::AddMaterial(const std::string& name) {
+  std::string mat_name = GetAvailableResourceName(name);
+  Material* mat = new Material(this, mat_name);
+  materials_.push_back(mat);
+  resource_name_map_[mat_name] = mat;
+  return mat;
+}
+Texture* Scene::AddTexture(const std::string& name) {
+  std::string tex_name = GetAvailableResourceName(name);
+  Texture* tex = new Texture(this,tex_name);
+  textures_.push_back(tex);
+  resource_name_map_[tex_name] = tex;
+  return tex;
+}
+void Scene::DuplicateResource(const Resource* resource) {
+  const std::string& initial_name = resource->name_;
+  std::string new_name = GetAvailableResourceName(initial_name);
+  switch (resource->type_) {
+    case ResourceType::kMesh: {
+      const Mesh* old_mesh = static_cast<const Mesh*>(resource);
+      Mesh *new_mesh = AddMesh(new_name);
+      new_mesh->vertices = old_mesh->vertices;
+      new_mesh->indices = old_mesh->indices;
+      new_mesh->material_id = old_mesh->material_id;
+      break;
+    }
+    case ResourceType::kMaterial: {
+      const Material* old_mat = static_cast<const Material*>(resource);
+      Material* new_mat = AddMaterial(new_name);
+      new_mat->albedo_ = old_mat->albedo_;
+      new_mat->metallic_ = old_mat->metallic_;
+      new_mat->reflectance_ = old_mat->reflectance_;
+      new_mat->roughness_ = old_mat->roughness_;
+      break;
+    }
+    default: {
+      ASSERT(false,"Unhandled resource type!");
+      break;
+    }
+  }
+}
 SceneObject* Scene::GetObjectByName(const std::string& name) const {
-  return name_map_.find(name)->second;
+  return object_name_map_.find(name)->second;
+}
+Resource* Scene::GetResourceByName(const std::string& name){
+  return resource_name_map_.find(name)->second;
 }
 glm::mat4 Scene::GetParentTransform(
     const SceneObject* scene_object) const {
@@ -75,31 +160,43 @@ Aabb Scene::ComputeAabb(
   }
   return aabb;
 }
-inline bool Scene::CheckNameExists(const std::string& s) {
-  return (name_map_.find(s) != name_map_.end());
+inline bool Scene::CheckObjectNameExists(const std::string& s) {
+  return (object_name_map_.find(s) != object_name_map_.end());
 }
-  std::string Scene::GetAvailableName(const std::string& prefix) {
-  if (!CheckNameExists(prefix)) return prefix;
+std::string Scene::GetAvailableObjectName(const std::string& prefix) {
+  if (!CheckObjectNameExists(prefix)) return prefix;
   uint32_t off_i = 1;
   while (true) {
     std::ostringstream name_stream;
     name_stream << prefix << " (" << off_i << ")";
-    if (!CheckNameExists(name_stream.str())) return name_stream.str();
+    if (!CheckObjectNameExists(name_stream.str())) return name_stream.str();
+    off_i++;
+  }
+}
+inline bool Scene::CheckResourceNameExists(const std::string& s) {
+  return (resource_name_map_.find(s) != resource_name_map_.end());
+}
+std::string Scene::GetAvailableResourceName(const std::string& prefix) {
+  if (!CheckResourceNameExists(prefix)) return prefix;
+  uint32_t off_i = 1;
+  while (true) {
+    std::ostringstream name_stream;
+    name_stream << prefix << " (" << off_i << ")";
+    if (!CheckResourceNameExists(name_stream.str())) return name_stream.str();
     off_i++;
   }
 }
 void Scene::CreatePrimitiveMeshes() {
   // Empty
-  meshes_.emplace_back(
-      kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kEmpty)]);
-  Mesh& empty = meshes_.back();
-  empty.vertices.clear();
-  empty.indices.clear();
+  Mesh* empty =
+      AddMesh(kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kEmpty)]);
+  empty->vertices.clear();
+  empty->indices.clear();
+  empty->material_id = 0;
   // Cube
-  meshes_.emplace_back(
-      kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kCube)]);
-  Mesh& cube = meshes_.back();
-  cube.vertices = {
+  Mesh* cube =
+      AddMesh(kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kCube)]);
+  cube->vertices = {
       {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.875f, 0.5f}},
       {{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.625f, 0.75f}},
       {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.625f, 0.5f}},
@@ -136,13 +233,12 @@ void Scene::CreatePrimitiveMeshes() {
       {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.625f, 0.25f}},
       {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.625f, 0.5f}},
       {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.375f, 0.5f}}};
-  cube.indices.resize(cube.vertices.size());
-  std::iota(cube.indices.begin(), cube.indices.end(), 0);
-  cube.material_id = 0;
+  cube->indices.resize(cube->vertices.size());
+  std::iota(cube->indices.begin(), cube->indices.end(), 0);
+  cube->material_id = 0;
   // Teapot
-  meshes_.emplace_back(
-      kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kTeapot)]);
-  Mesh& teapot = meshes_.back();
+  Mesh* teapot =
+      AddMesh(kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kTeapot)]);
   Assimp::Importer *importer = new Assimp::Importer();
   const aiScene* teapot_scene = importer->ReadFile(
       "../assets/models/teapot.obj",
@@ -161,15 +257,14 @@ void Scene::CreatePrimitiveMeshes() {
     vertex = teapot_transform * vertex;
     vertex.z -= 0.5;
     normal = glm::normalize(teapot_transform * normal);
-    teapot.vertices.push_back({vertex, normal, {0.0f, 0.0f}});
+    teapot->vertices.push_back({vertex, normal, {0.0f, 0.0f}});
   }
-  teapot.indices.resize(teapot.vertices.size());
-  std::iota(teapot.indices.begin(), teapot.indices.end(), 0);
-  teapot.material_id = 0;
+  teapot->indices.resize(teapot->vertices.size());
+  std::iota(teapot->indices.begin(), teapot->indices.end(), 0);
+  teapot->material_id = 0;
   // Bunny 
-  meshes_.emplace_back(
-      kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kBunny)]);
-  Mesh& bunny = meshes_.back();
+  Mesh* bunny =
+      AddMesh(kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kBunny)]);
   importer->FreeScene();
   const aiScene* bunny_scene =
       importer->ReadFile("../assets/models/bun_zipper.obj",
@@ -188,25 +283,24 @@ void Scene::CreatePrimitiveMeshes() {
     glm::vec3 normal = {ai_normal.x, ai_normal.y, ai_normal.z};
     vertex = bunny_transform * vertex;
     normal = glm::normalize(bunny_transform * normal);
-    bunny.vertices.push_back({vertex, normal, {0.0f, 0.0f}});
+    bunny->vertices.push_back({vertex, normal, {0.0f, 0.0f}});
   }
-  bunny.indices.resize(bunny.vertices.size());
-  std::iota(bunny.indices.begin(), bunny.indices.end(), 0);
-  bunny.material_id = 0;
+  bunny->indices.resize(bunny->vertices.size());
+  std::iota(bunny->indices.begin(), bunny->indices.end(), 0);
+  bunny->material_id = 0;
   // Offsets
   uint32_t current_offset = 0;
-  for (Mesh& mesh : meshes_) {
+  for (Mesh* mesh : meshes_) {
     offsets_.push_back(current_offset);
-    current_offset += static_cast<uint32_t>(mesh.vertices.size());
+    current_offset += static_cast<uint32_t>(mesh->vertices.size());
   }
 }
 void Scene::CreatePrimitiveMaterials() {
-  materials_.emplace_back("Standard");
-  Material& standard = materials_.back();
-  standard.albedo_ = glm::vec3(1.0f, 1.0f, 1.0f);
-  standard.reflectance_ = 1.0f;
-  standard.metallic_ = 1.0f;
-  standard.roughness_ = 0.1f;
+  Material* standard = AddMaterial("Standard");
+  standard->albedo_ = glm::vec3(1.0f, 1.0f, 1.0f);
+  standard->reflectance_ = 1.0f;
+  standard->metallic_ = 1.0f;
+  standard->roughness_ = 0.1f;
 }
 Aabb Scene::ComputeAabb(const SceneObject* scene_object) const {
   glm::mat4 parent_transform = GetParentTransform(scene_object);
@@ -224,8 +318,8 @@ void Scene::AabbDfs(const SceneObject* focus, Aabb& aabb,
   transform *= focus->transform_.GetTransformationMatrix();
   if (focus->type_ == SceneObjectType::kMesh) {
     const MeshObject* mesh_object = static_cast<const MeshObject*>(focus);
-    const Mesh& mesh = meshes_[mesh_object->mesh_id_];
-    for (const Vertex& vert : mesh.vertices) {
+    const Mesh* mesh = meshes_[mesh_object->mesh_id_];
+    for (const Vertex& vert : mesh->vertices) {
       glm::vec3 vpos = glm::vec3(transform * glm::vec4(vert.position, 1.0f));
       aabb.Extend(vpos);
     }

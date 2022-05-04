@@ -13,6 +13,7 @@ struct Material{
     float reflectance;
     float metallic;
     float roughness;
+    float pad;
 };
 
 layout(binding = 0, set = 0, std140) uniform directional_light_uniform_block{
