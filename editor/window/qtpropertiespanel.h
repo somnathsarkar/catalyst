@@ -64,6 +64,8 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField : public QWid
   QtPropertiesPanel* property_panel_;
   catalyst::NamedIndexProperty* property_;
   QComboBox* combobox_;
+  int GetPropertyIndex(int combobox_index);
+  void SetComboBoxIndex(int property_index);
 
  private slots:
   void ValueChanged(int v);

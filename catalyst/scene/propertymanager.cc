@@ -65,11 +65,11 @@ void PropertyManager::AddIntegerProperty(const std::string& property_name,
   properties_.push_back(prop);
 }
 void PropertyManager::AddNamedIndexProperty(
-    const std::string& property_name, std::function<uint32_t()> getter,
-    std::function<void(uint32_t)> setter,
-    std::function<std::vector<std::string>()> name_getter) {
+    const std::string& property_name, std::function<int()> getter,
+    std::function<void(int)> setter,
+    std::function<std::vector<std::string>()> name_getter, NamedIndexPropertyStyle style) {
   NamedIndexProperty* prop =
-      new NamedIndexProperty(property_name, getter, setter, name_getter);
+      new NamedIndexProperty(property_name, getter, setter, name_getter, style);
   properties_.push_back(prop);
 }
 void PropertyManager::AddVec3Property(
@@ -128,11 +128,13 @@ Vec3Property::Vec3Property(const std::string& property_name,
       max_value_(max_value)
 {}
 NamedIndexProperty::NamedIndexProperty(
-    const std::string& property_name, std::function<uint32_t()> getter,
-    std::function<void(uint32_t)> setter,
-    std::function<std::vector<std::string>()> name_getter)
+    const std::string& property_name, std::function<int()> getter,
+    std::function<void(int)> setter,
+    std::function<std::vector<std::string>()> name_getter,
+    NamedIndexPropertyStyle style)
     : Property(property_name, PropertyType::kNamedIndex),
       getter_(getter),
       setter_(setter),
-      name_getter_(name_getter) {}
+      name_getter_(name_getter),
+      style_(style) {}
 }  // namespace catalyst

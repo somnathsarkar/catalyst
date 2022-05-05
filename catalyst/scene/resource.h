@@ -41,9 +41,18 @@ class Mesh : public Resource {
 class Material : public Resource {
  public:
   glm::vec3 albedo_;
-  float reflectance_;
+  int albedo_texture_id_;
+
   float metallic_;
+  int metallic_texture_id_;
+
+  int normal_texture_id_;
+  int height_texture_id_;
+
   float roughness_;
+  int roughness_texture_id_;
+
+  float reflectance_;
   Material(Scene* scene, const std::string& name);
 };
 struct Texture : public Resource {

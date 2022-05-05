@@ -1,6 +1,7 @@
 #pragma once
 #include <QWidget>
 #include <QStandardItemModel>
+#include <QFileDialog>
 
 #include <editor/window/qtwindow.h>
 
@@ -29,6 +30,8 @@ class EditorWindow::QtWindow::QtResourcePanel : public QWidget {
   QStandardItemModel* treemodel_;
   QAction* add_action_;
   QAction* duplicate_action_;
+  QAction* open_action_;
+  QFileDialog* open_dialog_;
   catalyst::Scene* scene_;
 
   void Populate();
@@ -38,5 +41,6 @@ class EditorWindow::QtWindow::QtResourcePanel : public QWidget {
  private slots:
   void DuplicateResource();
   void AddResource();
+  void ImportResource();
 };
 }

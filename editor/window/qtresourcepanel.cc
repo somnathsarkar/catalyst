@@ -6,6 +6,7 @@
 #include <editor/window/qtpropertiespanel.h>
 #include <editor/window/qtwindow.h>
 #include <editor/window/qtscenetree.h>
+#include <catalyst/filesystem/importer.h>
 
 namespace editor {
 EditorWindow::QtWindow::QtResourcePanel::QtResourcePanel(QtWindow* window) : QWidget(window), window_(window), treemodel_(nullptr), scene_(nullptr) {
@@ -23,7 +24,16 @@ EditorWindow::QtWindow::QtResourcePanel::QtResourcePanel(QtWindow* window) : QWi
   add_action_->setShortcut(Qt::CTRL + Qt::Key_A);
   QObject::connect(add_action_, &QAction::triggered, this,
                    &QtResourcePanel::AddResource);
-  addAction(add_action_);
+
+  open_action_ = new QAction("Import Resource", this);
+  open_action_->setShortcut(Qt::CTRL + Qt::Key_O);
+  QObject::connect(open_action_, &QAction::triggered, this,
+                   &QtResourcePanel::ImportResource);
+  addAction(open_action_);
+
+  open_dialog_ = new QFileDialog(this);
+  open_dialog_->setFileMode(QFileDialog::FileMode::ExistingFile);
+  open_dialog_->setViewMode(QFileDialog::ViewMode::Detail);
 }
 void EditorWindow::QtWindow::QtResourcePanel::LoadScene() {
   catalyst::Scene* scene = window_->editor_->scene_;
@@ -45,6 +55,7 @@ void EditorWindow::QtWindow::QtResourcePanel::Populate() {
     QStandardItem* item_type = new QStandardItem(QString::fromStdString(
         catalyst::kResourceTypeNames[static_cast<uint32_t>(
             catalyst::ResourceType::kMesh)]));
+    item_type->setEditable(false);
     treemodel_->setItem(row_count, 0, item_name);
     treemodel_->setItem(row_count, 1, item_type);
     row_count++;
@@ -55,6 +66,19 @@ void EditorWindow::QtWindow::QtResourcePanel::Populate() {
     QStandardItem* item_type = new QStandardItem(QString::fromStdString(
         catalyst::kResourceTypeNames[static_cast<uint32_t>(
             catalyst::ResourceType::kMaterial)]));
+    item_type->setEditable(false);
+    treemodel_->setItem(row_count, 0, item_name);
+    treemodel_->setItem(row_count, 1, item_type);
+    row_count++;
+  }
+  for (uint32_t tex_i = 0;
+       tex_i < static_cast<uint32_t>(scene_->textures_.size()); tex_i++) {
+    QStandardItem* item_name = new QStandardItem(
+        QString::fromStdString(scene_->textures_[tex_i]->name_));
+    QStandardItem* item_type = new QStandardItem(QString::fromStdString(
+        catalyst::kResourceTypeNames[static_cast<uint32_t>(
+            catalyst::ResourceType::kTexture)]));
+    item_type->setEditable(false);
     treemodel_->setItem(row_count, 0, item_name);
     treemodel_->setItem(row_count, 1, item_type);
     row_count++;
@@ -116,5 +140,13 @@ void EditorWindow::QtWindow::QtResourcePanel::AddResource() {
     scene_->AddResourceToScene(resource);
     window_->scene_tree_->Update();
   }
+}
+void EditorWindow::QtWindow::QtResourcePanel::ImportResource() {
+  QStringList filenames;
+  if (open_dialog_->exec()) filenames = open_dialog_->selectedFiles();
+  for (const QString& file : filenames) {
+    catalyst::Importer::AddResources(*scene_,file.toStdString());
+  }
+  Populate();
 }
 }  // namespace editor

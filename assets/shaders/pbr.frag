@@ -13,7 +13,7 @@ struct Material{
     float reflectance;
     float metallic;
     float roughness;
-    float pad;
+    int albedo_texture_id;
 };
 
 layout(binding = 0, set = 0, std140) uniform directional_light_uniform_block{
@@ -35,7 +35,8 @@ layout(location = 1) in vec3 worldNormal;
 layout(location = 2) in vec4 viewPos;
 layout(location = 3) in vec3 viewNormal;
 layout(location = 4) in vec3 worldCamera;
-layout(location = 5) flat in uint materialId;
+layout(location = 5) in vec2 texCoords;
+layout(location = 6) flat in uint materialId;
 
 layout(location = 0) out vec4 outColor;
 
@@ -44,6 +45,9 @@ void main() {
     vec3 v = normalize(worldCamera);
     vec3 n = normalize(worldNormal);
     vec3 currentColor = vec3(0.0f);
+    vec3 albedo = material.color.rgb;
+    if(material.albedo_texture_id>-1)
+        albedo = texture(textures[material.albedo_texture_id],texCoords).rgb;
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){
         DirectionalLight light = directional_light_uniform.lights[light_i];
         vec3 world_light = -vec3(inverse(light.world_to_light_transform)[1]);
@@ -61,7 +65,7 @@ void main() {
         float Dh = material.roughness/(M_PI*pow(1.0f+pow(dot(n,h),2.0f)*(material.roughness-1.0f),2.0f));
         // Fresnel reflectance General Shlick approximation
         // F(n,l)
-        vec3 F0 = 0.16f * material.reflectance * material.reflectance * (1.0f-material.metallic) + (material.color.rgb*material.metallic);
+        vec3 F0 = 0.16f * material.reflectance * material.reflectance * (1.0f-material.metallic) + (albedo*material.metallic);
         vec3 F90 = vec3(1.0f);
         vec3 F = F0+(F90-F0)*pow(1.0f-mu_i,5.0f);
         // Specular BRDF
@@ -70,7 +74,7 @@ void main() {
         //f_spec = vec3(0.0f);
         // Diffuse BRDF
         // f_diff(l,v)
-        vec3 f_diff = (1-F)*(1.0f-material.metallic)*material.color.rgb/M_PI;
+        vec3 f_diff = (1-F)*(1.0f-material.metallic)*albedo/M_PI;
 
         // Shadow mapping
         float in_shadow = 0.0f;

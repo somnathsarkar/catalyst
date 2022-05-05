@@ -87,18 +87,24 @@ class Vec3Property : public Property {
                std::function<void(glm::vec3)> setter, float min_value = 0.0f,
                float max_value = 100.0f);
 };
+enum class NamedIndexPropertyStyle {
+  kDisallowNone = 0,
+  kAllowNone = 1
+};
 class NamedIndexProperty : public Property {
   friend class PropertyManager;
  public:
-  std::function<uint32_t()> getter_;
-  std::function<void(uint32_t)> setter_;
+  std::function<int()> getter_;
+  std::function<void(int)> setter_;
   std::function<std::vector<std::string>()> name_getter_;
+  NamedIndexPropertyStyle style_;
 
   protected:
   NamedIndexProperty(const std::string& property_name,
-                     std::function<uint32_t()> getter_,
-                     std::function<void(uint32_t)> setter_,
-                     std::function<std::vector<std::string>()> name_getter_);
+                     std::function<int()> getter_,
+                     std::function<void(int)> setter_,
+                     std::function<std::vector<std::string>()> name_getter_,
+                     NamedIndexPropertyStyle style);
 };
 class PropertyManager {
  public:
@@ -123,9 +129,10 @@ class PropertyManager {
                        std::function<void(glm::vec3)> setter,
                        float min_value = 0.0f, float max_value = 100.0f);
   void AddNamedIndexProperty(
-      const std::string& property_name, std::function<uint32_t()> getter,
-      std::function<void(uint32_t)> setter,
-      std::function<std::vector<std::string>()> name_getter);
+      const std::string& property_name, std::function<int()> getter,
+      std::function<void(int)> setter,
+      std::function<std::vector<std::string>()> name_getter,
+      NamedIndexPropertyStyle style);
   uint32_t PropertyCount() const;
   Property* GetProperty(uint32_t property_index) const;
 

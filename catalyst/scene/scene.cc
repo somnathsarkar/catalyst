@@ -123,6 +123,7 @@ void Scene::DuplicateResource(const Resource* resource) {
       const Material* old_mat = static_cast<const Material*>(resource);
       Material* new_mat = AddMaterial(new_name);
       new_mat->albedo_ = old_mat->albedo_;
+      new_mat->albedo_texture_id_ = old_mat->albedo_texture_id_;
       new_mat->metallic_ = old_mat->metallic_;
       new_mat->reflectance_ = old_mat->reflectance_;
       new_mat->roughness_ = old_mat->roughness_;

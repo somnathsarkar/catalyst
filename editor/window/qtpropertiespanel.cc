@@ -144,16 +144,32 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::QtNamedIndexField(
     QtPropertiesPanel* property_panel, catalyst::NamedIndexProperty* property) : property_panel_(property_panel),property_(property) {
   combobox_ = new QComboBox(this);
   std::vector<std::string> name_list = property_->name_getter_();
+  if (property_->style_ == catalyst::NamedIndexPropertyStyle::kAllowNone)
+    combobox_->addItem("None");
   for (const std::string& name : name_list) {
     combobox_->addItem(QString::fromStdString(name));
   }
-  combobox_->setCurrentIndex(static_cast<int>(property_->getter_()));
+  SetComboBoxIndex(property_->getter_());
   QObject::connect(combobox_, &QComboBox::currentIndexChanged, this,
           &QtNamedIndexField::ValueChanged);
 }
+int EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::
+    GetPropertyIndex(int combobox_index) {
+  int property_index = combobox_index;
+  if (property_->style_ == catalyst::NamedIndexPropertyStyle::kAllowNone)
+    property_index--;
+  return property_index;
+}
+void EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::
+    SetComboBoxIndex(int property_index) {
+  int combobox_index = property_index;
+  if (property_->style_ == catalyst::NamedIndexPropertyStyle::kAllowNone)
+    combobox_index++;
+  combobox_->setCurrentIndex(combobox_index);
+}
 void EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::ValueChanged(
   int v) {
-  uint32_t new_value = static_cast<uint32_t>(v);
+  int new_value = GetPropertyIndex(v);
   property_->setter_(new_value);
 }
 }  // namespace editor

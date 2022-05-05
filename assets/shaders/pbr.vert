@@ -16,7 +16,8 @@ layout(location = 1) out vec3 worldNormal;
 layout(location = 2) out vec4 viewPos;
 layout(location = 3) out vec3 viewNormal;
 layout(location = 4) out vec3 worldCamera;
-layout(location = 5) out uint materialId;
+layout(location = 5) out vec2 texCoord;
+layout(location = 6) out uint materialId;
 
 void main() {
     mat3 model_to_world_vec_transform = mat3(transpose(inverse(push_constants.model_to_world_transform)));
@@ -27,6 +28,7 @@ void main() {
     worldCamera = normalize(inverse(world_to_view_vec_transform)*viewCamera);
     worldNormal = model_to_world_vec_transform*inNormal;
     viewNormal = world_to_view_vec_transform*worldNormal;
+    texCoord = inUV;
     materialId = push_constants.material_id;
     gl_Position = push_constants.view_to_clip_transform*viewPos;
 }

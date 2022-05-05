@@ -53,11 +53,11 @@ class Application :: Renderer {
     static size_t GetSize();
   };
   struct MaterialUniform {
-    glm::vec4 color;
+    glm::vec4 albedo;
     float reflectance;
     float metallic;
     float roughness;
-    float pad;
+    int albedo_texture_id;
   };
   class MaterialUniformBlock {
    public:

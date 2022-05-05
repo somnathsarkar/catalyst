@@ -5,6 +5,7 @@
 #include <catalyst/scene/scene.h>
 #include <catalyst/scene/sceneobject.h>
 #include <catalyst/time/timemanager.h>
+#include <catalyst/filesystem/importer.h>
 
 namespace catalyst {
 Application::Renderer::DirectionalLightUniform::DirectionalLightUniform()
@@ -79,10 +80,61 @@ void Application::Renderer::LoadMeshes() {
 }
 void Application::Renderer::LoadTextures() {
   uint32_t tex_count = static_cast<uint32_t>(scene_->textures_.size());
-  if (scene_resource_details_.texture_count = tex_count) return;
+  TextureImporter texture_importer;
+  if (scene_resource_details_.texture_count == tex_count) return;
   for (uint32_t tex_i = scene_resource_details_.texture_count;
        tex_i < tex_count; tex_i++) {
+    bool read_success =
+        texture_importer.ReadFile(scene_->textures_[tex_i]->path_);
+    ASSERT(read_success, "Could not load texture file!");
+    const TextureData* tex_data = texture_importer.GetData();
+    size_t tex_size =
+        (tex_data->height) * (tex_data->width) * (tex_data->channels);
+    // Staging buffer
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_memory;
+    CreateBuffer(staging_buffer, staging_memory, tex_size,
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    void* data;
+    vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &data);
+    memcpy(data, tex_data->data, tex_size);
+    vkUnmapMemory(device_, staging_memory);
+    VkBufferImageCopy buffer_cp{};
+    buffer_cp.bufferOffset = 0;
+    buffer_cp.bufferRowLength = 0;
+    buffer_cp.bufferImageHeight = 0;
+    buffer_cp.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    buffer_cp.imageSubresource.mipLevel = 0;
+    buffer_cp.imageSubresource.baseArrayLayer = 0;
+    buffer_cp.imageSubresource.layerCount = 1;
+    buffer_cp.imageOffset = {0};
+    buffer_cp.imageExtent.width = tex_data->width;
+    buffer_cp.imageExtent.height = tex_data->height;
+    buffer_cp.imageExtent.depth = 1;
+
+    VkCommandBuffer cmd;
+    TransitionImageLayout(texture_images_[tex_i], VK_IMAGE_ASPECT_COLOR_BIT,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT);
+    BeginSingleUseCommandBuffer(cmd);
+    vkCmdCopyBufferToImage(cmd, staging_buffer, texture_images_[tex_i],
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                           &buffer_cp);
+    EndSingleUseCommandBuffer(cmd);
+    TransitionImageLayout(
+        texture_images_[tex_i], VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+    vkFreeMemory(device_,staging_memory,nullptr);
+    vkDestroyBuffer(device_,staging_buffer,nullptr);
   }
+  scene_resource_details_.texture_count = tex_count;
 }
 void Application::Renderer::CreateVertexBuffer() {
   CreateBuffer(
@@ -129,15 +181,14 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
       static_cast<uint32_t>(scene_->materials_.size());
   for (uint32_t mat_i = 0;
        mat_i < details.material_uniform_block.material_count_; mat_i++) {
+    const Material* mat = scene_->materials_[mat_i];
     MaterialUniform& mat_uniform =
         details.material_uniform_block.materials_[mat_i];
-    const Material* mat = scene_->materials_[mat_i];
-    details.material_uniform_block.materials_[mat_i].color = glm::vec4(mat->albedo_,1.0f);
-    details.material_uniform_block.materials_[mat_i].reflectance =
-        mat->reflectance_;
-    details.material_uniform_block.materials_[mat_i].metallic = mat->metallic_;
-    details.material_uniform_block.materials_[mat_i].roughness =
-        mat->roughness_;
+    mat_uniform.albedo = glm::vec4(mat->albedo_, 1.0f);
+    mat_uniform.reflectance = mat->reflectance_;
+    mat_uniform.metallic = mat->metallic_;
+    mat_uniform.roughness = mat->roughness_;
+    mat_uniform.albedo_texture_id = mat->albedo_texture_id_;
   }
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
