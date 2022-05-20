@@ -30,6 +30,8 @@ struct Vertex {
   glm::vec3 position;
   glm::vec3 normal;
   glm::vec2 uv;
+  glm::vec3 tangent;
+  glm::vec3 bitangent;
 };
 class Mesh : public Resource {
  public:
@@ -47,7 +49,6 @@ class Material : public Resource {
   int metallic_texture_id_;
 
   int normal_texture_id_;
-  int height_texture_id_;
 
   float roughness_;
   int roughness_texture_id_;

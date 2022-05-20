@@ -111,14 +111,27 @@ void Application::Renderer::CreateDepthmapPipeline() {
   vertex_uv_ad.location = 2;
   vertex_uv_ad.offset = offsetof(Vertex, uv);
 
+  VkVertexInputAttributeDescription vertex_tan_ad{};
+  vertex_tan_ad.binding = 0;
+  vertex_tan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_tan_ad.location = 3;
+  vertex_tan_ad.offset = offsetof(Vertex, tangent);
+
+  VkVertexInputAttributeDescription vertex_bitan_ad{};
+  vertex_bitan_ad.binding = 0;
+  vertex_bitan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_bitan_ad.location = 4;
+  vertex_bitan_ad.offset = offsetof(Vertex, bitangent);
+
   VkVertexInputAttributeDescription vertex_ads[] = {
-      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad};
+      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad, vertex_tan_ad,
+      vertex_bitan_ad};
 
   VkPipelineVertexInputStateCreateInfo vertex_input_info{};
   vertex_input_info.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_info.vertexBindingDescriptionCount = 1;
-  vertex_input_info.vertexAttributeDescriptionCount = 3;
+  vertex_input_info.vertexAttributeDescriptionCount = 5;
   vertex_input_info.pVertexBindingDescriptions = &vertex_bd;
   vertex_input_info.pVertexAttributeDescriptions = vertex_ads;
 

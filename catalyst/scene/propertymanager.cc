@@ -86,6 +86,14 @@ Property* PropertyManager::GetProperty(
     uint32_t property_index) const {
   return properties_[property_index];
 }
+std::function<int(void)> Property::CreateIntegerGetter(int* int_field) {
+  std::function<int(void)> getter = [int_field]() -> int { return *int_field; };
+  return getter;
+}
+std::function<void(int)> Property::CreateIntegerSetter(int* int_field) {
+  std::function<void(int)> getter = [int_field](int new_value) -> void { *int_field = new_value; };
+  return getter;
+}
 Property::Property(const std::string& property_name,
                    const PropertyType& property_type) : name_(property_name),type_(property_type) {}
 BooleanProperty::BooleanProperty(const std::string& property_name,

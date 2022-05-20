@@ -58,6 +58,10 @@ class Application :: Renderer {
     float metallic;
     float roughness;
     int albedo_texture_id;
+    int metallic_texture_id;
+    int roughness_texture_id;
+    int normal_texture_id;
+    int _pad;
   };
   class MaterialUniformBlock {
    public:
@@ -75,6 +79,9 @@ class Application :: Renderer {
     uint32_t mesh_count;
     uint32_t texture_count;
     uint32_t vertex_count;
+    uint32_t index_count;
+    std::vector<uint32_t> vertex_offsets_;
+    std::vector<uint32_t> index_offsets_;
   };
 
 #ifndef NDEBUG
@@ -103,7 +110,8 @@ class Application :: Renderer {
   std::vector<VkDeviceMemory> depth_memory_;
   std::vector<VkImage> depth_images_;
   std::vector<VkImageView> depth_image_views_;
-  VkSampler sampler_;
+  VkSampler texture_sampler_;
+  VkSampler shadowmap_sampler_;
 
   VkPipelineCache pipeline_cache_;
   VkPipelineLayout graphics_pipeline_layout_;
@@ -132,8 +140,10 @@ class Application :: Renderer {
   SceneResourceDetails scene_resource_details_;
   VkDeviceMemory vertex_memory_;
   VkBuffer vertex_buffer_;
-  std::vector<VkDeviceMemory> uniform_memory_;
-  std::vector<VkBuffer> uniform_buffers_;
+  VkDeviceMemory index_memory_;
+  VkBuffer index_buffer_;
+  std::vector<VkDeviceMemory> directional_light_uniform_memory_;
+  std::vector<VkBuffer> directional_light_uniform_buffers_;
   std::vector<std::vector<VkDeviceMemory>> shadowmap_memory_;
   std::vector<std::vector<VkImage>> shadowmap_images_;
   std::vector<std::vector<VkImageView>> shadowmap_image_views_;
@@ -180,7 +190,7 @@ class Application :: Renderer {
 
   // Rendering Pipeline - Generic
   VkShaderModule CreateShaderModule(const std::vector<char>& buffer);
-  void CreateSampler();
+  void CreateSamplers();
   void CreatePipelines(bool include_fixed_size = true);
   void CreateRenderPasses(bool include_fixed_size = true);
   void CreateFramebuffers(bool include_fixed_size = true);
@@ -219,6 +229,7 @@ class Application :: Renderer {
 
   // Fixed Size Resources
   void CreateVertexBuffer();
+  void CreateIndexBuffer();
   void CreateDirectionalLightUniformBuffer();
   void CreateDirectionalShadowmapResources();
   void CreateMaterialUniformBuffer();

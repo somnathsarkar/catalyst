@@ -125,8 +125,11 @@ void Scene::DuplicateResource(const Resource* resource) {
       new_mat->albedo_ = old_mat->albedo_;
       new_mat->albedo_texture_id_ = old_mat->albedo_texture_id_;
       new_mat->metallic_ = old_mat->metallic_;
+      new_mat->metallic_texture_id_ = old_mat->metallic_texture_id_;
       new_mat->reflectance_ = old_mat->reflectance_;
       new_mat->roughness_ = old_mat->roughness_;
+      new_mat->roughness_texture_id_ = old_mat->roughness_texture_id_;
+      new_mat->normal_texture_id_ = old_mat->normal_texture_id_;
       break;
     }
     default: {
@@ -289,12 +292,6 @@ void Scene::CreatePrimitiveMeshes() {
   bunny->indices.resize(bunny->vertices.size());
   std::iota(bunny->indices.begin(), bunny->indices.end(), 0);
   bunny->material_id = 0;
-  // Offsets
-  uint32_t current_offset = 0;
-  for (Mesh* mesh : meshes_) {
-    offsets_.push_back(current_offset);
-    current_offset += static_cast<uint32_t>(mesh->vertices.size());
-  }
 }
 void Scene::CreatePrimitiveMaterials() {
   Material* standard = AddMaterial("Standard");
@@ -302,6 +299,10 @@ void Scene::CreatePrimitiveMaterials() {
   standard->reflectance_ = 1.0f;
   standard->metallic_ = 1.0f;
   standard->roughness_ = 0.1f;
+  standard->albedo_texture_id_ = -1;
+  standard->metallic_texture_id_ = -1;
+  standard->normal_texture_id_ = -1;
+  standard->roughness_texture_id_ = -1;
 }
 Aabb Scene::ComputeAabb(const SceneObject* scene_object) const {
   glm::mat4 parent_transform = GetParentTransform(scene_object);

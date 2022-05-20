@@ -46,6 +46,7 @@ target_sources(catalyst PRIVATE
 "filesystem/importer.cc")
 
 target_shader_pairs(catalyst "phong" "debugdraw" "depthmap" "pbr")
+target_models(catalyst "bun_zipper.obj" "teapot.obj")
 
 if(MSVC)
   target_compile_options(catalyst PUBLIC "/Zi")

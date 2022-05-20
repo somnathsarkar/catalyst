@@ -10,7 +10,6 @@ Material::Material(Scene* scene, const std::string& name)
       metallic_(0.0f),
       metallic_texture_id_(-1),
       normal_texture_id_(-1),
-      height_texture_id_(-1),
       roughness_(0.0f),
       roughness_texture_id_(-1),
       reflectance_(1.0f)
@@ -37,12 +36,6 @@ Material::Material(Scene* scene, const std::string& name)
   std::function<void(float)> rough_setter = [this](float new_value) -> void {
     this->roughness_ = new_value;
   };
-  std::function<int(void)> albedo_id_getter = [this]() -> int {
-    return this->albedo_texture_id_;
-  };
-  std::function<void(int)> albedo_id_setter = [this](int new_value) -> void {
-    this->albedo_texture_id_ = new_value;
-  };
   std::function<std::vector<std::string>()> texture_name_getter =
       [this]() -> std::vector<std::string> {
     std::vector<std::string> result;
@@ -51,15 +44,29 @@ Material::Material(Scene* scene, const std::string& name)
     }
     return result;
   };
-  property_manager_.AddVec3Property("Color", color_getter, color_setter, 0.0f,
+  property_manager_.AddVec3Property("Albedo", color_getter, color_setter, 0.0f,
                                     1.0f);
+  property_manager_.AddNamedIndexProperty(
+      "Albedo Texture", Property::CreateIntegerGetter(&albedo_texture_id_),
+      Property::CreateIntegerSetter(&albedo_texture_id_), texture_name_getter,
+      NamedIndexPropertyStyle::kAllowNone);
   property_manager_.AddFloatProperty("Reflectance", reflectance_getter,
                                      reflectance_setter, 0.0f, 1.0f);
   property_manager_.AddFloatProperty("Metallic", metal_getter, metal_setter);
+  property_manager_.AddNamedIndexProperty(
+      "Metallic Texture", Property::CreateIntegerGetter(&metallic_texture_id_),
+      Property::CreateIntegerSetter(&metallic_texture_id_), texture_name_getter,
+      NamedIndexPropertyStyle::kAllowNone);
   property_manager_.AddFloatProperty("Roughness", rough_getter, rough_setter);
-  property_manager_.AddNamedIndexProperty("Albedo Texture", albedo_id_getter,
-                                          albedo_id_setter, texture_name_getter,
-                                          NamedIndexPropertyStyle::kAllowNone);
+  property_manager_.AddNamedIndexProperty(
+      "Roughness Texture",
+      Property::CreateIntegerGetter(&roughness_texture_id_),
+      Property::CreateIntegerSetter(&roughness_texture_id_),
+      texture_name_getter, NamedIndexPropertyStyle::kAllowNone);
+  property_manager_.AddNamedIndexProperty(
+      "Normal Texture", Property::CreateIntegerGetter(&metallic_texture_id_),
+      Property::CreateIntegerSetter(&metallic_texture_id_), texture_name_getter,
+      NamedIndexPropertyStyle::kAllowNone);
 }
 Resource::Resource(Scene* scene, const std::string& name, const ResourceType type)
     : name_(name), type_(type), property_manager_(), scene_(scene) {}

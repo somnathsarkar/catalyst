@@ -345,7 +345,7 @@ VkShaderModule Application::Renderer::CreateShaderModule(
   return shader;
 }
 
-void Application::Renderer::CreateSampler() {
+void Application::Renderer::CreateSamplers() {
   VkSamplerCreateInfo sampler_ci{};
   sampler_ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
   sampler_ci.pNext = nullptr;
@@ -364,8 +364,28 @@ void Application::Renderer::CreateSampler() {
   sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
   sampler_ci.unnormalizedCoordinates = VK_FALSE;
   VkResult create_result =
-      vkCreateSampler(device_, &sampler_ci, nullptr, &sampler_);
-  ASSERT(create_result == VK_SUCCESS, "Failed to create sampler!");
+      vkCreateSampler(device_, &sampler_ci, nullptr, &shadowmap_sampler_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create shadowmap sampler!");
+
+  sampler_ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  sampler_ci.pNext = nullptr;
+  sampler_ci.flags = 0;
+  sampler_ci.magFilter = VK_FILTER_LINEAR;
+  sampler_ci.minFilter = VK_FILTER_LINEAR;
+  sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  sampler_ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  sampler_ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  sampler_ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  sampler_ci.mipLodBias = 0.0;
+  sampler_ci.anisotropyEnable = VK_TRUE;
+  sampler_ci.maxAnisotropy = 1.0f;
+  sampler_ci.minLod = 0.0f;
+  sampler_ci.maxLod = 1.0f;
+  sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+  sampler_ci.unnormalizedCoordinates = VK_FALSE;
+  create_result =
+      vkCreateSampler(device_, &sampler_ci, nullptr, &texture_sampler_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create texture sampler!");
 }
 
 void Application::Renderer::CreateCommandPool() {
@@ -522,13 +542,27 @@ void Application::Renderer::CreateGraphicsPipeline() {
   vertex_uv_ad.location = 2;
   vertex_uv_ad.offset = offsetof(Vertex, uv);
 
-  VkVertexInputAttributeDescription vertex_ads[] = {vertex_pos_ad,vertex_norm_ad,vertex_uv_ad};
+  VkVertexInputAttributeDescription vertex_tan_ad{};
+  vertex_tan_ad.binding = 0;
+  vertex_tan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_tan_ad.location = 3;
+  vertex_tan_ad.offset = offsetof(Vertex, tangent);
+
+  VkVertexInputAttributeDescription vertex_bitan_ad{};
+  vertex_bitan_ad.binding = 0;
+  vertex_bitan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_bitan_ad.location = 4;
+  vertex_bitan_ad.offset = offsetof(Vertex, bitangent);
+
+  VkVertexInputAttributeDescription vertex_ads[] = {
+      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad, vertex_tan_ad,
+      vertex_bitan_ad};
 
   VkPipelineVertexInputStateCreateInfo vertex_input_info{};
   vertex_input_info.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_info.vertexBindingDescriptionCount = 1;
-  vertex_input_info.vertexAttributeDescriptionCount = 3;
+  vertex_input_info.vertexAttributeDescriptionCount = 5;
   vertex_input_info.pVertexBindingDescriptions = &vertex_bd;
   vertex_input_info.pVertexAttributeDescriptions = vertex_ads;
 

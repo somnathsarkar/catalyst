@@ -11,7 +11,6 @@
 int main(int argc, char** argv) {
   catalyst::Scene scene;
   catalyst::Application app;
-  //catalyst::GlfwWindow window;
   editor::EditorWindow window;
   editor::EditorScript script;
   app.AssignWindow(&window);

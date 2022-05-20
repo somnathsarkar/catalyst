@@ -14,6 +14,10 @@ struct Material{
     float metallic;
     float roughness;
     int albedo_texture_id;
+    int metallic_texture_id;
+    int roughness_texture_id;
+    int normal_texture_id;
+    int _pad;
 };
 
 layout(binding = 0, set = 0, std140) uniform directional_light_uniform_block{
@@ -32,22 +36,34 @@ layout(binding = 3) uniform sampler2D textures[16];
 
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;
-layout(location = 2) in vec4 viewPos;
-layout(location = 3) in vec3 viewNormal;
-layout(location = 4) in vec3 worldCamera;
-layout(location = 5) in vec2 texCoords;
-layout(location = 6) flat in uint materialId;
+layout(location = 2) in vec3 worldTangent;
+layout(location = 3) in vec3 worldBiTangent;
+layout(location = 4) in vec4 viewPos;
+layout(location = 5) in vec3 worldCamera;
+layout(location = 6) in vec2 texCoords;
+layout(location = 7) flat in uint materialId;
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
     Material material = material_uniform.materials[materialId];
     vec3 v = normalize(worldCamera);
-    vec3 n = normalize(worldNormal);
+    vec3 N = normalize(worldNormal);
+    vec3 T = normalize(worldTangent);
+    vec3 B = normalize(worldTangent);
+    vec3 n = N;
+    if(material.normal_texture_id>-1)
+        n = mat3(T,B,N)*texture(textures[material.normal_texture_id],texCoords).rgb;
     vec3 currentColor = vec3(0.0f);
     vec3 albedo = material.color.rgb;
     if(material.albedo_texture_id>-1)
         albedo = texture(textures[material.albedo_texture_id],texCoords).rgb;
+    float metallic = material.metallic;
+    if(material.metallic_texture_id>-1)
+        metallic = texture(textures[material.metallic_texture_id],texCoords).r;
+    float roughness = material.roughness;
+    if(material.roughness_texture_id>-1)
+        roughness = texture(textures[material.roughness_texture_id],texCoords).r;
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){
         DirectionalLight light = directional_light_uniform.lights[light_i];
         vec3 world_light = -vec3(inverse(light.world_to_light_transform)[1]);
@@ -57,15 +73,15 @@ void main() {
         // G_2/4|n.l||n.v|
         float mu_i = max(dot(n,l),0.0f);
         float mu_o = max(dot(n,v),0.0f);
-        float g2_denom_o = mu_o*sqrt(material.roughness+mu_i*mu_i*(1-material.roughness));
-        float g2_denom_i = mu_i*sqrt(material.roughness+mu_o*mu_o*(1-material.roughness));
+        float g2_denom_o = mu_o*sqrt(roughness+mu_i*mu_i*(1-roughness));
+        float g2_denom_i = mu_i*sqrt(roughness+mu_o*mu_o*(1-roughness));
         float G2 = 0.5f/(g2_denom_o+g2_denom_i);
         // GGX NDF
         // D(h), ignoring chi(n.m)
-        float Dh = material.roughness/(M_PI*pow(1.0f+pow(dot(n,h),2.0f)*(material.roughness-1.0f),2.0f));
+        float Dh = roughness/(M_PI*pow(1.0f+pow(dot(n,h),2.0f)*(roughness-1.0f),2.0f));
         // Fresnel reflectance General Shlick approximation
         // F(n,l)
-        vec3 F0 = 0.16f * material.reflectance * material.reflectance * (1.0f-material.metallic) + (albedo*material.metallic);
+        vec3 F0 = 0.16f * material.reflectance * material.reflectance * (1.0f-metallic) + (albedo*metallic);
         vec3 F90 = vec3(1.0f);
         vec3 F = F0+(F90-F0)*pow(1.0f-mu_i,5.0f);
         // Specular BRDF
@@ -74,7 +90,7 @@ void main() {
         //f_spec = vec3(0.0f);
         // Diffuse BRDF
         // f_diff(l,v)
-        vec3 f_diff = (1-F)*(1.0f-material.metallic)*albedo/M_PI;
+        vec3 f_diff = (1-F)*(1.0f-metallic)*albedo/M_PI;
 
         // Shadow mapping
         float in_shadow = 0.0f;

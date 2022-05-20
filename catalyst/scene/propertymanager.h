@@ -21,6 +21,8 @@ class Property {
  public:
   const std::string name_;
   const PropertyType type_;
+  static std::function<int(void)> CreateIntegerGetter(int* int_field);
+  static std::function<void(int)> CreateIntegerSetter(int* int_field);
 
  protected:
   Property(const std::string& property_name, const PropertyType& property_type);

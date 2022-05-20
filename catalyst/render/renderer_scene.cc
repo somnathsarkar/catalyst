@@ -24,6 +24,8 @@ size_t Application::Renderer::MaterialUniformBlock::GetSize() {
 void Application::Renderer::LoadScene(const Scene& scene) {
   scene_ = &scene;
   scene_resource_details_ = {0};
+  scene_resource_details_.vertex_offsets_.clear();
+  scene_resource_details_.index_offsets_.clear();
   LoadSceneResources();
 }
 void Application::Renderer::LoadSceneResources() {
@@ -35,48 +37,92 @@ void Application::Renderer::LoadMeshes() {
   if (scene_resource_details_.mesh_count == mesh_count) return;
   VkCommandBuffer cmd;
   BeginSingleUseCommandBuffer(cmd);
-  VkBuffer staging_buffer;
-  VkDeviceMemory staging_memory;
-  uint32_t buffer_size = 0;
+  VkBuffer vertex_staging_buffer;
+  VkDeviceMemory vertex_staging_memory;
+  VkBuffer index_staging_buffer;
+  VkDeviceMemory index_staging_memory;
+  uint32_t vertex_buffer_size = 0;
+  uint32_t index_buffer_size = 0;
   for (uint32_t mesh_i = scene_resource_details_.mesh_count;
        mesh_i < mesh_count; mesh_i++) {
     const Mesh* mesh = scene_->meshes_[mesh_i];
-    uint32_t mesh_size = static_cast<uint32_t>(sizeof(mesh->vertices[0]) *
+    uint32_t vertex_size = static_cast<uint32_t>(sizeof(mesh->vertices[0]) *
                                                mesh->vertices.size());
-    buffer_size += mesh_size;
+    uint32_t index_size =
+        static_cast<uint32_t>(sizeof(mesh->indices[0]) * mesh->indices.size());
+    vertex_buffer_size += vertex_size;
+    index_buffer_size += index_size;
   }
-  CreateBuffer(staging_buffer, staging_memory, buffer_size,
+  CreateBuffer(vertex_staging_buffer, vertex_staging_memory, vertex_buffer_size,
                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  void* data;
-  vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &data);
+  CreateBuffer(index_staging_buffer, index_staging_memory, index_buffer_size,
+               VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  void* vertex_data;
+  void* index_data;
+  vkMapMemory(device_, vertex_staging_memory, 0, VK_WHOLE_SIZE, 0, &vertex_data);
+  vkMapMemory(device_, index_staging_memory, 0, VK_WHOLE_SIZE, 0, &index_data);
   size_t vertex_prefix = scene_resource_details_.vertex_count;
-  size_t buffer_prefix = 0;
+  size_t vertex_buffer_prefix = 0;
+  size_t index_prefix = scene_resource_details_.index_count;
+  size_t index_buffer_prefix = 0;
   for (uint32_t mesh_i = scene_resource_details_.mesh_count;
        mesh_i < mesh_count; mesh_i++) {
     Mesh* mesh = scene_->meshes_[mesh_i];
     size_t mesh_vertices = mesh->vertices.size();
+    size_t mesh_indices = mesh->indices.size();
     size_t mesh_size = sizeof(Vertex) * mesh_vertices;
-    memcpy(reinterpret_cast<char*>(data) + buffer_prefix, mesh->vertices.data(),
-           mesh_size);
-    buffer_prefix += mesh_size;
+    size_t index_size = sizeof(uint32_t) * mesh_indices;
+    memcpy(reinterpret_cast<char*>(vertex_data) + vertex_buffer_prefix, mesh->vertices.data(), mesh_size);
+    memcpy(reinterpret_cast<char*>(index_data) + index_buffer_prefix,
+           mesh->indices.data(), index_size);
+    vertex_buffer_prefix += mesh_size;
+    index_buffer_prefix += index_size;
     vertex_prefix += mesh_vertices;
+    index_prefix += mesh_indices;
   }
-  vkUnmapMemory(device_, staging_memory);
-  VkBufferCopy buffer_cp{};
-  buffer_cp.srcOffset = 0;
-  buffer_cp.dstOffset = sizeof(Vertex)*scene_resource_details_.vertex_count;
-  buffer_cp.size = buffer_size;
-  vkCmdCopyBuffer(cmd, staging_buffer, vertex_buffer_, 1, &buffer_cp);
+  vkUnmapMemory(device_, vertex_staging_memory);
+  VkBufferCopy vertex_buffer_cp{};
+  vertex_buffer_cp.srcOffset = 0;
+  vertex_buffer_cp.dstOffset = sizeof(Vertex)*scene_resource_details_.vertex_count;
+  vertex_buffer_cp.size = vertex_buffer_size;
+  vkCmdCopyBuffer(cmd, vertex_staging_buffer, vertex_buffer_, 1,
+                  &vertex_buffer_cp);
+  VkBufferCopy index_buffer_cp{};
+  index_buffer_cp.srcOffset = 0;
+  index_buffer_cp.dstOffset =
+      sizeof(uint32_t) * scene_resource_details_.index_count;
+  index_buffer_cp.size = index_buffer_size;
+  vkCmdCopyBuffer(cmd, index_staging_buffer, index_buffer_, 1,
+                  &index_buffer_cp);
+  EndSingleUseCommandBuffer(cmd);
 
+  for (uint32_t mesh_i = scene_resource_details_.mesh_count;
+       mesh_i < mesh_count; mesh_i++) {
+    if (mesh_i > 0) {
+      const Mesh* mesh = scene_->meshes_[mesh_i-1];
+      uint32_t mesh_size = static_cast<uint32_t>(mesh->vertices.size());
+      uint32_t index_size = static_cast<uint32_t>(mesh->indices.size());
+      scene_resource_details_.index_offsets_.push_back(
+          scene_resource_details_.index_offsets_.back() + index_size);
+      scene_resource_details_.vertex_offsets_.push_back(
+          scene_resource_details_.vertex_offsets_.back() + mesh_size);
+    } else {
+      scene_resource_details_.vertex_offsets_.push_back(0);
+      scene_resource_details_.index_offsets_.push_back(0);
+    }
+  }
   scene_resource_details_.vertex_count = static_cast<uint32_t>(vertex_prefix);
+  scene_resource_details_.index_count = static_cast<uint32_t>(index_prefix);
   scene_resource_details_.mesh_count =
       static_cast<uint32_t>(scene_->meshes_.size());
-
-  EndSingleUseCommandBuffer(cmd);
-  vkDestroyBuffer(device_, staging_buffer, nullptr);
-  vkFreeMemory(device_, staging_memory, nullptr);
+  vkDestroyBuffer(device_, vertex_staging_buffer, nullptr);
+  vkFreeMemory(device_, vertex_staging_memory, nullptr);
+  vkDestroyBuffer(device_, index_staging_buffer, nullptr);
+  vkFreeMemory(device_, index_staging_memory, nullptr);
 }
 void Application::Renderer::LoadTextures() {
   uint32_t tex_count = static_cast<uint32_t>(scene_->textures_.size());
@@ -142,14 +188,20 @@ void Application::Renderer::CreateVertexBuffer() {
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
+void Application::Renderer::CreateIndexBuffer() {
+  CreateBuffer(
+      index_buffer_, index_memory_, sizeof(uint32_t) * Scene::kMaxVertices,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+}
 void Application::Renderer::CreateDirectionalLightUniformBuffer() {
   uint32_t num_frames = frame_count_;
-  uniform_buffers_.resize(num_frames);
-  uniform_memory_.resize(num_frames);
+  directional_light_uniform_buffers_.resize(num_frames);
+  directional_light_uniform_memory_.resize(num_frames);
   for (uint32_t frame_i = 0;
        frame_i < num_frames; frame_i++) {
     CreateBuffer(
-        uniform_buffers_[frame_i], uniform_memory_[frame_i],
+        directional_light_uniform_buffers_[frame_i], directional_light_uniform_memory_[frame_i],
         DirectionalLightUniform::GetSize(),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -159,12 +211,6 @@ void Application::Renderer::CreateDirectionalLightUniformBuffer() {
 void Application::Renderer::UnloadScene() {
   ASSERT(scene_ != nullptr, "No scene loaded!");
   vkDeviceWaitIdle(device_);
-  vkDestroyBuffer(device_, vertex_buffer_, nullptr);
-  vkFreeMemory(device_, vertex_memory_, nullptr);
-  for (VkBuffer buffer_ : uniform_buffers_)
-    vkDestroyBuffer(device_, buffer_, nullptr);
-  for (VkDeviceMemory memory_ : uniform_memory_)
-    vkFreeMemory(device_, memory_, nullptr);
   scene_ = nullptr;
 }
 void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
@@ -172,6 +218,7 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
   VkCommandBuffer& cmd = command_buffers_[frame_i];
   VkDeviceSize vertex_offsets[] = {static_cast<uint64_t>(0)};
   vkCmdBindVertexBuffers(cmd, 0, 1, &vertex_buffer_, vertex_offsets);
+  vkCmdBindIndexBuffer(cmd, index_buffer_, 0, VK_INDEX_TYPE_UINT32);
 
   SceneDrawDetails details;
   details.push_constants.world_to_view_transform = glm::mat4(1.0f);
@@ -189,6 +236,9 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
     mat_uniform.metallic = mat->metallic_;
     mat_uniform.roughness = mat->roughness_;
     mat_uniform.albedo_texture_id = mat->albedo_texture_id_;
+    mat_uniform.metallic_texture_id = mat->metallic_texture_id_;
+    mat_uniform.roughness_texture_id = mat->roughness_texture_id_;
+    mat_uniform.normal_texture_id = mat->normal_texture_id_;
   }
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
@@ -210,7 +260,7 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
 
   void* uniform_data;
-  vkMapMemory(device_, uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
+  vkMapMemory(device_, directional_light_uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
               &uniform_data);
   size_t light_array_size =
       Scene::kMaxDirectionalLights * sizeof(DirectionalLight);
@@ -218,7 +268,7 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
          light_array_size);
   memcpy(static_cast<char*>(uniform_data)+light_array_size, &details.directional_light_uniform.light_count_,
          sizeof(uint32_t));
-  vkUnmapMemory(device_, uniform_memory_[frame_i]);
+  vkUnmapMemory(device_, directional_light_uniform_memory_[frame_i]);
 
   void* material_uniform_data;
   vkMapMemory(device_, material_uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
@@ -256,8 +306,9 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
                          offsetof(PushConstantData, material_id),
                          sizeof(details.push_constants.material_id),
                          &mesh->material_id);
-      vkCmdDraw(cmd, static_cast<uint32_t>(mesh->vertices.size()), 1,
-                scene_->offsets_[mesh_id], 0);
+      vkCmdDrawIndexed(cmd, static_cast<uint32_t>(mesh->indices.size()), 1,
+                       scene_resource_details_.index_offsets_[mesh_id],
+                       scene_resource_details_.vertex_offsets_[mesh_id], 0);
       break;
     }
     default: {

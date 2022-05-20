@@ -49,7 +49,6 @@ class Scene {
   std::vector<Mesh*> meshes_;
   std::vector<Material*> materials_;
   std::vector<Texture*> textures_;
-  std::vector<uint32_t> offsets_;
   std::vector<Camera> cameras_;
   std::vector<DebugDrawObject*> debugdraw_objects_;
 

@@ -36,13 +36,14 @@ void Application::Renderer::StartUp() {
   CreateDescriptorSets();
 
   CreatePipelineCache();
-  CreateSampler();
+  CreateSamplers();
 
   CreateRenderPasses();
   CreatePipelines();
 
   // Fixed-Size Resources
   CreateVertexBuffer();
+  CreateIndexBuffer();
   CreateDebugDrawResources();
   CreateDirectionalLightUniformBuffer();
   CreateDirectionalShadowmapResources();
@@ -105,6 +106,15 @@ void Application::Renderer::LateShutDown() {
   texture_images_.clear();
   texture_memory_.clear();
 
+  vkDestroyBuffer(device_, vertex_buffer_, nullptr);
+  vkFreeMemory(device_, vertex_memory_, nullptr);
+  vkDestroyBuffer(device_, index_buffer_, nullptr);
+  vkFreeMemory(device_, index_memory_, nullptr);
+  for (VkBuffer buffer_ : directional_light_uniform_buffers_)
+    vkDestroyBuffer(device_, buffer_, nullptr);
+  for (VkDeviceMemory memory_ : directional_light_uniform_memory_)
+    vkFreeMemory(device_, memory_, nullptr);
+
   // Destroy fixed size pipelines
   vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);
 
@@ -115,7 +125,8 @@ void Application::Renderer::LateShutDown() {
                        static_cast<uint32_t>(command_buffers_.size()),
                        command_buffers_.data());
   vkDestroyCommandPool(device_, command_pool_, nullptr);
-  vkDestroySampler(device_, sampler_, nullptr);
+  vkDestroySampler(device_, shadowmap_sampler_, nullptr);
+  vkDestroySampler(device_, texture_sampler_, nullptr);
   vkDestroyPipelineCache(device_, pipeline_cache_, nullptr);
   vkDestroyDevice(device_, nullptr);
   vkDestroyInstance(instance_, nullptr);

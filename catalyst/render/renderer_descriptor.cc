@@ -93,7 +93,7 @@ void Application::Renderer::WriteDescriptorSets() {
   set_wis.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     VkDescriptorBufferInfo& set_bi = set_bis[frame_i];
-    set_bi.buffer = uniform_buffers_[frame_i];
+    set_bi.buffer = directional_light_uniform_buffers_[frame_i];
     set_bi.offset = 0;
     set_bi.range = VK_WHOLE_SIZE;
     VkWriteDescriptorSet& set_wi = set_wis[frame_i];
@@ -116,7 +116,7 @@ void Application::Renderer::WriteDescriptorSets() {
     for (uint32_t shadow_i = 0; shadow_i < Scene::kMaxDirectionalLights;
          shadow_i++) {
       VkDescriptorImageInfo& set_si = shadow_image_infos[frame_i][shadow_i];
-      set_si.sampler = sampler_;
+      set_si.sampler = shadowmap_sampler_;
       set_si.imageView = shadowmap_image_views_[frame_i][shadow_i];
       set_si.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
     }
@@ -159,7 +159,7 @@ void Application::Renderer::WriteDescriptorSets() {
     for (uint32_t tex_i = 0; tex_i < Scene::kMaxDirectionalLights;
          tex_i++) {
       VkDescriptorImageInfo& set_si = texture_image_infos[frame_i][tex_i];
-      set_si.sampler = sampler_;
+      set_si.sampler = texture_sampler_;
       set_si.imageView = texture_image_views_[tex_i];
       set_si.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }

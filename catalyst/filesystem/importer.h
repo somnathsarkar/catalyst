@@ -14,6 +14,8 @@ class Importer {
  public:
   static FileType InferFiletype(const std::filesystem::path& filepath);
   static void AddResources(Scene& scene, const std::filesystem::path& path);
+  static void AddModelResources(Scene& scene,
+                                const std::filesystem::path& path);
  
 private:
 };
