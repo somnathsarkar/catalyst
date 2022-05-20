@@ -10,7 +10,6 @@
 namespace catalyst {
 class Application :: Renderer {
  public:
-  static const uint32_t kMaxDebugDrawVertices = 1024;
   Renderer(Application* app);
   void StartUp();
   void LoadScene(const Scene& scene);
@@ -39,6 +38,7 @@ class Application :: Renderer {
     glm::mat4 model_to_world_transform;
     glm::mat4 world_to_view_transform;
     glm::mat4 view_to_clip_transform;
+    uint32_t material_id;
   };
   struct DirectionalLight {
     alignas(16) glm::mat4 world_to_light_transform;
@@ -52,10 +52,38 @@ class Application :: Renderer {
     DirectionalLightUniform();
     static size_t GetSize();
   };
+  struct MaterialUniform {
+    glm::vec4 albedo;
+    float reflectance;
+    float metallic;
+    float roughness;
+    int albedo_texture_id;
+    int metallic_texture_id;
+    int roughness_texture_id;
+    int normal_texture_id;
+    int _pad;
+  };
+  class MaterialUniformBlock {
+   public:
+    std::vector<MaterialUniform> materials_;
+    uint32_t material_count_;
+    MaterialUniformBlock();
+    static size_t GetSize();
+  };
   struct SceneDrawDetails {
     PushConstantData push_constants;
     DirectionalLightUniform directional_light_uniform;
+    MaterialUniformBlock material_uniform_block;
   };
+  struct SceneResourceDetails {
+    uint32_t mesh_count;
+    uint32_t texture_count;
+    uint32_t vertex_count;
+    uint32_t index_count;
+    std::vector<uint32_t> vertex_offsets_;
+    std::vector<uint32_t> index_offsets_;
+  };
+
 #ifndef NDEBUG
   static const bool debug_enabled_ = true;
 #else
@@ -82,10 +110,8 @@ class Application :: Renderer {
   std::vector<VkDeviceMemory> depth_memory_;
   std::vector<VkImage> depth_images_;
   std::vector<VkImageView> depth_image_views_;
-  std::vector<std::vector<VkDeviceMemory>> shadowmap_memory_;
-  std::vector<std::vector<VkImage>> shadowmap_images_;
-  std::vector<std::vector<VkImageView>> shadowmap_image_views_;
-  VkSampler sampler_;
+  VkSampler texture_sampler_;
+  VkSampler shadowmap_sampler_;
 
   VkPipelineCache pipeline_cache_;
   VkPipelineLayout graphics_pipeline_layout_;
@@ -111,15 +137,23 @@ class Application :: Renderer {
   std::vector<VkFence> in_flight_fences_;
 
   const Scene* scene_;
+  SceneResourceDetails scene_resource_details_;
   VkDeviceMemory vertex_memory_;
   VkBuffer vertex_buffer_;
-  VkDeviceSize vertex_buffer_size_;
-  std::vector<VkDeviceMemory> uniform_memory_;
-  std::vector<VkBuffer> uniform_buffers_;
-  VkDeviceSize uniform_buffer_size_;
+  VkDeviceMemory index_memory_;
+  VkBuffer index_buffer_;
+  std::vector<VkDeviceMemory> directional_light_uniform_memory_;
+  std::vector<VkBuffer> directional_light_uniform_buffers_;
+  std::vector<std::vector<VkDeviceMemory>> shadowmap_memory_;
+  std::vector<std::vector<VkImage>> shadowmap_images_;
+  std::vector<std::vector<VkImageView>> shadowmap_image_views_;
   std::vector<VkBuffer> debugdraw_buffer_;
   std::vector<VkDeviceMemory> debugdraw_memory_;
-  VkDeviceSize debugdraw_buffer_size_;
+  std::vector<VkBuffer> material_uniform_buffers_;
+  std::vector<VkDeviceMemory> material_uniform_memory_;
+  std::vector<VkDeviceMemory> texture_memory_;
+  std::vector<VkImage> texture_images_;
+  std::vector<VkImageView> texture_image_views_;
 
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
@@ -151,16 +185,18 @@ class Application :: Renderer {
   VkExtent2D SelectSwapExtent(VkSurfaceCapabilitiesKHR capabilities);
   void CreateSwapchain();
   void CreateDepthResources();
-  void CreateShadowmapResources();
   void DestroySwapchain();
   void RecreateSwapchain();
 
   // Rendering Pipeline - Generic
   VkShaderModule CreateShaderModule(const std::vector<char>& buffer);
-  void CreateSampler();
-  void CreatePipelines();
-  void CreateRenderPasses();
-  void CreateFramebuffers();
+  void CreateSamplers();
+  void CreatePipelines(bool include_fixed_size = true);
+  void CreateRenderPasses(bool include_fixed_size = true);
+  void CreateFramebuffers(bool include_fixed_size = true);
+
+  // Framebuffers
+  void CreateDirectionalShadowmapFramebuffers();
 
   // Rendering Pipeline - Graphics
   void CreatePipelineCache();
@@ -178,7 +214,6 @@ class Application :: Renderer {
   // Rendering Pipeline - Depthmaps
   void CreateDepthmapRenderPass();
   void CreateDepthmapPipeline();
-  void CreateShadowmapFramebuffers();
   void BeginDepthmapRenderPass(VkCommandBuffer& cmd, VkFramebuffer& framebuffer);
 
   // Needed for each window, can be in rendermanager_surface.cc
@@ -190,18 +225,45 @@ class Application :: Renderer {
   void CreateDescriptorSetLayout();
   void CreateDescriptorPool();
   void CreateDescriptorSets();
+  void WriteDescriptorSets();
 
-  // Scene Management
-  uint32_t SelectMemoryType(const VkMemoryRequirements& mem_reqs, const VkMemoryPropertyFlags& req_props);
+  // Fixed Size Resources
+  void CreateVertexBuffer();
+  void CreateIndexBuffer();
+  void CreateDirectionalLightUniformBuffer();
+  void CreateDirectionalShadowmapResources();
+  void CreateMaterialUniformBuffer();
+  void CreateTextureResources();
+
+  // Scene Resources
+  void LoadSceneResources();
+  void LoadMeshes();
+  void LoadTextures();
+
+  // Utilities - renderer_utilities.cc
+  static std::vector<char> ReadFile(const std::string& path);
+  uint32_t SelectMemoryType(const VkMemoryRequirements& mem_reqs,
+                            const VkMemoryPropertyFlags& req_props);
   void CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory,
                     const VkDeviceSize& size, const VkBufferUsageFlags& usage,
                     const VkMemoryPropertyFlags& req_props);
+  void CreateImage(VkImage& image, VkDeviceMemory& memory,
+                   const VkFormat format, const VkExtent3D extent,
+                   const uint32_t mip_levels, const VkImageUsageFlags usage,
+                   const VkMemoryPropertyFlags req_props);
+  void CreateImageView(VkImageView& image_view, VkImage& image,
+                       const VkFormat format,
+                       const VkImageAspectFlags aspect_flags);
+  void TransitionImageLayout(VkImage& image,
+                             const VkImageAspectFlagBits image_aspect,
+                             const VkImageLayout initial_layout,
+                             const VkImageLayout final_layout,
+                             const VkPipelineStageFlagBits src_scope,
+                             const VkPipelineStageFlagBits dst_scope,
+                             const VkAccessFlags src_access_mask,
+                             const VkAccessFlags dst_access_mask);
   void BeginSingleUseCommandBuffer(VkCommandBuffer& cmd);
   void EndSingleUseCommandBuffer(VkCommandBuffer& cmd);
-  void CreateVertexBuffer();
-  void CreateDirectionalLightUniformBuffer();
-  void CreateDirectionalLightShadowmapSampler();
-  void WriteDescriptorSets();
 
   // Draw Commands
   void DrawFrame();
@@ -222,9 +284,6 @@ class Application :: Renderer {
       VkDebugUtilsMessageTypeFlagsEXT messageType,
       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
       void* pUserData);
-
-  // Filesystem operations, maybe take out of render manager
-  static std::vector<char> ReadFile(const std::string& path);
 
   // Uncopyable
   Renderer(const Renderer& a) = delete;

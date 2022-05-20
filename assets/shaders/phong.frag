@@ -7,11 +7,11 @@ struct DirectionalLight{
 };
 
 layout(binding = 0, set = 0, std140) uniform directional_light_uniform_block{
-    DirectionalLight lights[10];
+    DirectionalLight lights[16];
     int num_lights;
 }directional_light_uniform;
 
-layout(binding = 1) uniform sampler2D directional_shadow_map[10];
+layout(binding = 1) uniform sampler2D directional_shadow_map[16];
 
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;
@@ -39,7 +39,7 @@ void main() {
         vec3 L = normalize(world_light_dir);
         vec3 N = normalize(worldNormal);
         vec3 V = normalize(worldCamera);
-        vec3 R = reflect(L,N);
+        vec3 R = reflect(-L,N);
         //float shadow_bias = max(0.05f*(1.0f-dot(N,L)),0.005f);
         float shadow_bias = 0.001f;
         float light_shadow = 0.0f;

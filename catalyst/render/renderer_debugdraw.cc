@@ -4,9 +4,9 @@ namespace catalyst {
 void Application::Renderer::CreateDebugDrawResources() {
   debugdraw_buffer_.resize(frame_count_);
   debugdraw_memory_.resize(frame_count_);
-  debugdraw_buffer_size_ = sizeof(Vertex) * kMaxDebugDrawVertices;
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
-    CreateBuffer(debugdraw_buffer_[frame_i], debugdraw_memory_[frame_i], debugdraw_buffer_size_,
+    CreateBuffer(debugdraw_buffer_[frame_i], debugdraw_memory_[frame_i],
+                 sizeof(Vertex) * Scene::kMaxDebugDrawVertices,
                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -67,14 +67,27 @@ void Application::Renderer::CreateDebugDrawPipeline() {
   vertex_uv_ad.location = 2;
   vertex_uv_ad.offset = offsetof(Vertex, uv);
 
+  VkVertexInputAttributeDescription vertex_tan_ad{};
+  vertex_tan_ad.binding = 0;
+  vertex_tan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_tan_ad.location = 3;
+  vertex_tan_ad.offset = offsetof(Vertex, tangent);
+
+  VkVertexInputAttributeDescription vertex_bitan_ad{};
+  vertex_bitan_ad.binding = 0;
+  vertex_bitan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_bitan_ad.location = 4;
+  vertex_bitan_ad.offset = offsetof(Vertex, bitangent);
+
   VkVertexInputAttributeDescription vertex_ads[] = {
-      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad};
+      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad, vertex_tan_ad,
+      vertex_bitan_ad};
 
   VkPipelineVertexInputStateCreateInfo vertex_input_info{};
   vertex_input_info.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_info.vertexBindingDescriptionCount = 1;
-  vertex_input_info.vertexAttributeDescriptionCount = 3;
+  vertex_input_info.vertexAttributeDescriptionCount = 5;
   vertex_input_info.pVertexBindingDescriptions = &vertex_bd;
   vertex_input_info.pVertexAttributeDescriptions = vertex_ads;
 

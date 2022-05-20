@@ -2,6 +2,7 @@
 
 #include <editor/window/qtviewportwindow.h>
 #include <editor/window/qtscenetree.h>
+#include <editor/window/qtresourcepanel.h>
 #include <editor/window/qtpropertiespanel.h>
 
 namespace editor {
@@ -21,8 +22,13 @@ EditorWindow::QtWindow::QtWindow(EditorWindow* editor):editor_(editor),selection
   layout_->setContentsMargins(0, 0, 0, 0);
   layout_->addWidget(viewport_widget_,0,0,2,1);
 
+  tab_view_ = new QTabWidget(this);
+  tab_view_->tabBar()->setDocumentMode(true);
   scene_tree_ = new QtSceneTree(this);
-  layout_->addWidget(scene_tree_, 0, 1);
+  tab_view_->addTab(scene_tree_, "Scene Hierarchy");
+  resource_panel_ = new QtResourcePanel(this);
+  tab_view_->addTab(resource_panel_, "Resources");
+  layout_->addWidget(tab_view_, 0, 1);
 
   properties_panel_ = new QtPropertiesPanel(this);
   layout_->addWidget(properties_panel_, 1, 1);
@@ -33,7 +39,10 @@ EditorWindow::QtWindow::QtWindow(EditorWindow* editor):editor_(editor),selection
 
 EditorWindow::QtWindow::~QtWindow() {}
 
-void EditorWindow::QtWindow::LoadScene() { scene_tree_->LoadScene(); }
+void EditorWindow::QtWindow::LoadScene() {
+  scene_tree_->LoadScene();
+  resource_panel_->LoadScene();
+}
 
 void EditorWindow::QtWindow::closeEvent(QCloseEvent* close_event) {
   window_should_close = true;

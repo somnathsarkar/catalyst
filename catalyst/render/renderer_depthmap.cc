@@ -111,14 +111,27 @@ void Application::Renderer::CreateDepthmapPipeline() {
   vertex_uv_ad.location = 2;
   vertex_uv_ad.offset = offsetof(Vertex, uv);
 
+  VkVertexInputAttributeDescription vertex_tan_ad{};
+  vertex_tan_ad.binding = 0;
+  vertex_tan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_tan_ad.location = 3;
+  vertex_tan_ad.offset = offsetof(Vertex, tangent);
+
+  VkVertexInputAttributeDescription vertex_bitan_ad{};
+  vertex_bitan_ad.binding = 0;
+  vertex_bitan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_bitan_ad.location = 4;
+  vertex_bitan_ad.offset = offsetof(Vertex, bitangent);
+
   VkVertexInputAttributeDescription vertex_ads[] = {
-      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad};
+      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad, vertex_tan_ad,
+      vertex_bitan_ad};
 
   VkPipelineVertexInputStateCreateInfo vertex_input_info{};
   vertex_input_info.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_info.vertexBindingDescriptionCount = 1;
-  vertex_input_info.vertexAttributeDescriptionCount = 3;
+  vertex_input_info.vertexAttributeDescriptionCount = 5;
   vertex_input_info.pVertexBindingDescriptions = &vertex_bd;
   vertex_input_info.pVertexAttributeDescriptions = vertex_ads;
 
@@ -131,14 +144,14 @@ void Application::Renderer::CreateDepthmapPipeline() {
   VkViewport viewport{};
   viewport.x = 0.0f;
   viewport.y = 0.0f;
-  viewport.width = (float)swapchain_extent_.width;
-  viewport.height = (float)swapchain_extent_.height;
+  viewport.width = (float)Scene::kMaxShadowmapResolution;
+  viewport.height = (float)Scene::kMaxShadowmapResolution;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
-  scissor.extent = swapchain_extent_;
+  scissor.extent.height = scissor.extent.width = Scene::kMaxShadowmapResolution;
 
   VkPipelineViewportStateCreateInfo viewport_state{};
   viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -231,7 +244,7 @@ void Application::Renderer::CreateDepthmapPipeline() {
   vkDestroyShaderModule(device_, vert_shader, nullptr);
   vkDestroyShaderModule(device_, frag_shader, nullptr);
 }
-void Application::Renderer::CreateShadowmapFramebuffers() {
+void Application::Renderer::CreateDirectionalShadowmapFramebuffers() {
   shadowmap_framebuffers_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     shadowmap_framebuffers_[frame_i].resize(Scene::kMaxDirectionalLights);
@@ -244,8 +257,8 @@ void Application::Renderer::CreateShadowmapFramebuffers() {
       framebuffer_ci.renderPass = depthmap_render_pass_;
       framebuffer_ci.attachmentCount = 1;
       framebuffer_ci.pAttachments = &shadowmap_image_views_[frame_i][shadow_i];
-      framebuffer_ci.width = swapchain_extent_.width;
-      framebuffer_ci.height = swapchain_extent_.height;
+      framebuffer_ci.width = Scene::kMaxShadowmapResolution;
+      framebuffer_ci.height = Scene::kMaxShadowmapResolution;
       framebuffer_ci.layers = 1;
       VkResult create_result =
           vkCreateFramebuffer(device_, &framebuffer_ci, nullptr,
@@ -266,7 +279,8 @@ void Application::Renderer::BeginDepthmapRenderPass(
   render_pass_bi.pNext = nullptr;
   render_pass_bi.renderPass = depthmap_render_pass_;
   render_pass_bi.framebuffer = framebuffer;
-  render_pass_bi.renderArea.extent = swapchain_extent_;
+  render_pass_bi.renderArea.extent.width = Scene::kMaxShadowmapResolution;
+  render_pass_bi.renderArea.extent.height = Scene::kMaxShadowmapResolution;
   render_pass_bi.renderArea.offset.x = 0;
   render_pass_bi.renderArea.offset.y = 0;
   render_pass_bi.clearValueCount = 1;

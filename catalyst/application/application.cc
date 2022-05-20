@@ -42,11 +42,11 @@ void Application::ShutDown() {
   glfwTerminate();
 }
 void Application::Update() {
+  TimeManager& time_manager = TimeManager::Get();
+  time_manager.Update();
   main_window->Update();
   if (script_!=nullptr)
     script_->Update(*main_window,*scene_);
-  TimeManager& time_manager = TimeManager::Get();
-  time_manager.Update();
   renderer->Update();
 }
 Application::Application() : main_window(nullptr), scene_(nullptr),script_(nullptr) {}

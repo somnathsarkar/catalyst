@@ -22,27 +22,36 @@ void Application::Renderer::StartUp() {
   surface_ = window_->GetVkSurface();
 
   CreateDevice();
+
+  // Resizeable resources
   CreateSwapchain();
   CreateDepthResources();
-  CreateShadowmapResources();
 
-  // One-time resources
-  CreateDebugDrawResources();
+  CreateCommandPool();
+  CreateCommandBuffers();
+  CreateSyncObjects();
 
   CreateDescriptorSetLayout();
   CreateDescriptorPool();
   CreateDescriptorSets();
 
   CreatePipelineCache();
-  CreateSampler();
+  CreateSamplers();
+
   CreateRenderPasses();
   CreatePipelines();
-  CreateFramebuffers();
 
-  // Prerequisites to draw the first frame, need one set of these per window
-  CreateCommandPool();
-  CreateCommandBuffers();
-  CreateSyncObjects();
+  // Fixed-Size Resources
+  CreateVertexBuffer();
+  CreateIndexBuffer();
+  CreateDebugDrawResources();
+  CreateDirectionalLightUniformBuffer();
+  CreateDirectionalShadowmapResources();
+  CreateMaterialUniformBuffer();
+  CreateTextureResources();
+  WriteDescriptorSets();
+
+  CreateFramebuffers();
 }
 void Application::Renderer::Update() { DrawFrame(); }
 void Application::Renderer::EarlyShutDown() {
@@ -60,17 +69,64 @@ void Application::Renderer::LateShutDown() {
   for (VkFence fence : in_flight_fences_)
     vkDestroyFence(device_, fence, nullptr);
   
+  // Destroy Fixed size resources
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     vkDestroyBuffer(device_, debugdraw_buffer_[frame_i], nullptr);
     vkFreeMemory(device_, debugdraw_memory_[frame_i], nullptr);
   }
   debugdraw_buffer_.clear();
   debugdraw_memory_.clear();
+
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    for (uint32_t shadowmap_i = 0; shadowmap_i < Scene::kMaxDirectionalLights;
+         shadowmap_i++) {
+      vkDestroyFramebuffer(
+          device_, shadowmap_framebuffers_[frame_i][shadowmap_i], nullptr);
+      vkDestroyImageView(device_, shadowmap_image_views_[frame_i][shadowmap_i],
+                         nullptr);
+      vkFreeMemory(device_, shadowmap_memory_[frame_i][shadowmap_i], nullptr);
+      vkDestroyImage(device_, shadowmap_images_[frame_i][shadowmap_i], nullptr);
+    }
+    shadowmap_framebuffers_[frame_i].clear();
+    shadowmap_image_views_[frame_i].clear();
+    shadowmap_memory_[frame_i].clear();
+    shadowmap_images_[frame_i].clear();
+  }
+  shadowmap_framebuffers_.clear();
+  shadowmap_image_views_.clear();
+  shadowmap_memory_.clear();
+  shadowmap_images_.clear();
+
+  for (uint32_t texture_i = 0; texture_i < Scene::kMaxTextures; texture_i++) {
+    vkDestroyImageView(device_, texture_image_views_[texture_i], nullptr);
+    vkFreeMemory(device_, texture_memory_[texture_i], nullptr);
+    vkDestroyImage(device_, texture_images_[texture_i], nullptr);
+  }
+  texture_image_views_.clear();
+  texture_images_.clear();
+  texture_memory_.clear();
+
+  vkDestroyBuffer(device_, vertex_buffer_, nullptr);
+  vkFreeMemory(device_, vertex_memory_, nullptr);
+  vkDestroyBuffer(device_, index_buffer_, nullptr);
+  vkFreeMemory(device_, index_memory_, nullptr);
+  for (VkBuffer buffer_ : directional_light_uniform_buffers_)
+    vkDestroyBuffer(device_, buffer_, nullptr);
+  for (VkDeviceMemory memory_ : directional_light_uniform_memory_)
+    vkFreeMemory(device_, memory_, nullptr);
+
+  // Destroy fixed size pipelines
+  vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);
+
+  // Destroy Render passes
+  vkDestroyRenderPass(device_, depthmap_render_pass_, nullptr);
+
   vkFreeCommandBuffers(device_, command_pool_,
                        static_cast<uint32_t>(command_buffers_.size()),
                        command_buffers_.data());
   vkDestroyCommandPool(device_, command_pool_, nullptr);
-  vkDestroySampler(device_, sampler_, nullptr);
+  vkDestroySampler(device_, shadowmap_sampler_, nullptr);
+  vkDestroySampler(device_, texture_sampler_, nullptr);
   vkDestroyPipelineCache(device_, pipeline_cache_, nullptr);
   vkDestroyDevice(device_, nullptr);
   vkDestroyInstance(instance_, nullptr);

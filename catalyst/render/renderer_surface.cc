@@ -2,7 +2,6 @@
 
 #include <array>
 #include <algorithm>
-#include <fstream>
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -190,184 +189,110 @@ VkFormat Application::Renderer::SelectDepthFormat() {
 }
 void Application::Renderer::CreateDepthResources() {
   depth_format_ = SelectDepthFormat();
+  depth_images_.resize(frame_count_);
+  depth_image_views_.resize(frame_count_);
+  depth_memory_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
-    VkImage depth_image;
-    VkImageCreateInfo image_ci{};
-    image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    image_ci.pNext = nullptr;
-    image_ci.flags = 0;
-    image_ci.imageType = VK_IMAGE_TYPE_2D;
-    image_ci.format = depth_format_;
-    image_ci.extent.width = swapchain_extent_.width;
-    image_ci.extent.height = swapchain_extent_.height;
-    image_ci.extent.depth = 1;
-    image_ci.mipLevels = 1;
-    image_ci.arrayLayers = 1;
-    image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
-    image_ci.tiling = VK_IMAGE_TILING_OPTIMAL;
-    image_ci.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    image_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkResult create_result =
-        vkCreateImage(device_, &image_ci, nullptr, &depth_image);
-    ASSERT(create_result == VK_SUCCESS, "Failed to create depth image!");
-    depth_images_.push_back(depth_image);
-
-    VkDeviceMemory depth_mem;
-    VkMemoryRequirements image_reqs;
-    vkGetImageMemoryRequirements(device_, depth_image, &image_reqs);
-    uint32_t mem_type = SelectMemoryType(image_reqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    VkMemoryAllocateInfo image_ai{};
-    image_ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    image_ai.pNext = nullptr;
-    image_ai.memoryTypeIndex = mem_type;
-    image_ai.allocationSize = image_reqs.size;
-    VkResult alloc_result =
-        vkAllocateMemory(device_, &image_ai, nullptr, &depth_mem);
-    ASSERT(alloc_result == VK_SUCCESS, "Failed to allocate depth memory!");
-    depth_memory_.push_back(depth_mem);
-    VkResult bind_result =
-        vkBindImageMemory(device_, depth_image, depth_mem, 0);
-    ASSERT(bind_result == VK_SUCCESS, "Failed to bind depth memory!");
-
-    VkImageView depth_iv;
-    VkImageViewCreateInfo view_ci{};
-    view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    view_ci.pNext = nullptr;
-    view_ci.flags = 0;
-    view_ci.image = depth_image;
-    view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    view_ci.format = depth_format_;
-    view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    if (depth_format_ == VK_FORMAT_D24_UNORM_S8_UINT)
-      view_ci.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-    view_ci.subresourceRange.baseMipLevel = 0;
-    view_ci.subresourceRange.levelCount = 1;
-    view_ci.subresourceRange.baseArrayLayer = 0;
-    view_ci.subresourceRange.layerCount = 1;
-    create_result = vkCreateImageView(device_, &view_ci, nullptr, &depth_iv);
-    ASSERT(create_result == VK_SUCCESS, "Failed to create depth image view!");
-    depth_image_views_.push_back(depth_iv);
+    VkExtent3D depth_extent;
+    depth_extent.width = swapchain_extent_.width;
+    depth_extent.height = swapchain_extent_.height;
+    depth_extent.depth = 1;
+    CreateImage(depth_images_[frame_i], depth_memory_[frame_i], depth_format_,
+                depth_extent, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    CreateImageView(depth_image_views_[frame_i], depth_images_[frame_i],
+                    depth_format_, VK_IMAGE_ASPECT_DEPTH_BIT);
   }
 }
-void Application::Renderer::CreateShadowmapResources() {
+void Application::Renderer::CreateDirectionalShadowmapResources() {
   shadowmap_images_.resize(frame_count_);
   shadowmap_image_views_.resize(frame_count_);
   shadowmap_memory_.resize(frame_count_);
+  VkExtent3D shadowmap_extent;
+  shadowmap_extent.width = Scene::kMaxShadowmapResolution;
+  shadowmap_extent.height = Scene::kMaxShadowmapResolution;
+  shadowmap_extent.depth = 1;
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    shadowmap_images_[frame_i].resize(Scene::kMaxDirectionalLights);
+    shadowmap_image_views_[frame_i].resize(Scene::kMaxDirectionalLights);
+    shadowmap_memory_[frame_i].resize(Scene::kMaxDirectionalLights);
     for (uint32_t shadowmap_i = 0; shadowmap_i < Scene::kMaxDirectionalLights;
          shadowmap_i++) {
-      VkImage depth_image;
-      VkImageCreateInfo image_ci{};
-      image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-      image_ci.pNext = nullptr;
-      image_ci.flags = 0;
-      image_ci.imageType = VK_IMAGE_TYPE_2D;
-      image_ci.format = depth_format_;
-      image_ci.extent.width = swapchain_extent_.width;
-      image_ci.extent.height = swapchain_extent_.height;
-      image_ci.extent.depth = 1;
-      image_ci.mipLevels = 1;
-      image_ci.arrayLayers = 1;
-      image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
-      image_ci.tiling = VK_IMAGE_TILING_OPTIMAL;
-      image_ci.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                       VK_IMAGE_USAGE_SAMPLED_BIT;
-      image_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-      image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      VkResult create_result =
-          vkCreateImage(device_, &image_ci, nullptr, &depth_image);
-      ASSERT(create_result == VK_SUCCESS, "Failed to create depth image!");
-      shadowmap_images_[frame_i].push_back(depth_image);
-
-      VkDeviceMemory depth_mem;
-      VkMemoryRequirements image_reqs;
-      vkGetImageMemoryRequirements(device_, depth_image, &image_reqs);
-      uint32_t mem_type =
-          SelectMemoryType(image_reqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-      VkMemoryAllocateInfo image_ai{};
-      image_ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-      image_ai.pNext = nullptr;
-      image_ai.memoryTypeIndex = mem_type;
-      image_ai.allocationSize = image_reqs.size;
-      VkResult alloc_result =
-          vkAllocateMemory(device_, &image_ai, nullptr, &depth_mem);
-      ASSERT(alloc_result == VK_SUCCESS, "Failed to allocate depth memory!");
-      shadowmap_memory_[frame_i].push_back(depth_mem);
-      VkResult bind_result =
-          vkBindImageMemory(device_, depth_image, depth_mem, 0);
-      ASSERT(bind_result == VK_SUCCESS, "Failed to bind depth memory!");
-
-      VkImageView depth_iv;
-      VkImageViewCreateInfo view_ci{};
-      view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-      view_ci.pNext = nullptr;
-      view_ci.flags = 0;
-      view_ci.image = depth_image;
-      view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-      view_ci.format = depth_format_;
-      view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-      if (depth_format_ == VK_FORMAT_D24_UNORM_S8_UINT)
-        view_ci.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-      view_ci.subresourceRange.baseMipLevel = 0;
-      view_ci.subresourceRange.levelCount = 1;
-      view_ci.subresourceRange.baseArrayLayer = 0;
-      view_ci.subresourceRange.layerCount = 1;
-      create_result = vkCreateImageView(device_, &view_ci, nullptr, &depth_iv);
-      ASSERT(create_result == VK_SUCCESS, "Failed to create depth image view!");
-      shadowmap_image_views_[frame_i].push_back(depth_iv);
+      CreateImage(shadowmap_images_[frame_i][shadowmap_i],
+                  shadowmap_memory_[frame_i][shadowmap_i], depth_format_,
+                  shadowmap_extent, 1,
+                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                      VK_IMAGE_USAGE_SAMPLED_BIT,
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      CreateImageView(shadowmap_image_views_[frame_i][shadowmap_i],
+                      shadowmap_images_[frame_i][shadowmap_i], depth_format_,
+                      VK_IMAGE_ASPECT_DEPTH_BIT);
+      TransitionImageLayout(
+          shadowmap_images_[frame_i][shadowmap_i], VK_IMAGE_ASPECT_DEPTH_BIT,
+          VK_IMAGE_LAYOUT_UNDEFINED,
+          VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+          VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, VK_ACCESS_SHADER_READ_BIT);
     }
+  }
+}
+void Application::Renderer::CreateMaterialUniformBuffer() {
+  material_uniform_buffers_.resize(frame_count_);
+  material_uniform_memory_.resize(frame_count_);
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    CreateBuffer(
+        material_uniform_buffers_[frame_i], material_uniform_memory_[frame_i],
+        MaterialUniformBlock::GetSize(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+  }
+}
+void Application::Renderer::CreateTextureResources() {
+  texture_images_.resize(Scene::kMaxTextures);
+  texture_image_views_.resize(Scene::kMaxTextures);
+  texture_memory_.resize(Scene::kMaxTextures);
+  VkExtent3D tex_extent;
+  tex_extent.width = Scene::kMaxTextureResolution;
+  tex_extent.height = Scene::kMaxTextureResolution;
+  tex_extent.depth = 1;
+  for (uint32_t tex_i = 0; tex_i < Scene::kMaxTextures; tex_i++) {
+    CreateImage(texture_images_[tex_i], texture_memory_[tex_i],
+                VK_FORMAT_R8G8B8A8_SRGB, tex_extent, 1,
+                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    CreateImageView(texture_image_views_[tex_i], texture_images_[tex_i],
+                    VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    TransitionImageLayout(
+        texture_images_[tex_i], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, VK_ACCESS_SHADER_READ_BIT);
   }
 }
 void Application::Renderer::DestroySwapchain() {
   vkDeviceWaitIdle(device_);
 
   // Destroy framebuffers
-  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
     vkDestroyFramebuffer(device_, framebuffers_[frame_i], nullptr);
-    for (uint32_t shadowmap_i = 0; shadowmap_i < Scene::kMaxDirectionalLights;
-         shadowmap_i++) {
-      vkDestroyFramebuffer(
-          device_, shadowmap_framebuffers_[frame_i][shadowmap_i], nullptr);
-    }
-    shadowmap_framebuffers_[frame_i].clear();
-  }
   framebuffers_.clear();
-  shadowmap_framebuffers_.clear();
 
   // Destroy pipelines and render passes
   vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_lines_pipeline_, nullptr);
-  vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);
   vkDestroyRenderPass(device_, render_pass_, nullptr);
-  vkDestroyRenderPass(device_, depthmap_render_pass_, nullptr);
 
   // Destroy resources
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     vkDestroyImageView(device_, depth_image_views_[frame_i], nullptr);
     vkFreeMemory(device_, depth_memory_[frame_i], nullptr);
     vkDestroyImage(device_, depth_images_[frame_i], nullptr);
-
-    for (uint32_t shadowmap_i = 0; shadowmap_i < Scene::kMaxDirectionalLights;
-         shadowmap_i++) {
-      vkDestroyImageView(device_, shadowmap_image_views_[frame_i][shadowmap_i],
-                         nullptr);
-      vkFreeMemory(device_, shadowmap_memory_[frame_i][shadowmap_i], nullptr);
-      vkDestroyImage(device_, shadowmap_images_[frame_i][shadowmap_i], nullptr);
-    }
-    shadowmap_image_views_[frame_i].clear();
-    shadowmap_memory_[frame_i].clear();
-    shadowmap_images_[frame_i].clear();
-
     vkDestroyImageView(device_, swapchain_image_views_[frame_i], nullptr);
   }
   depth_image_views_.clear();
   depth_memory_.clear();
   depth_images_.clear();
-  shadowmap_image_views_.clear();
-  shadowmap_images_.clear();
-  swapchain_image_views_.clear();
 
   vkDestroySwapchainKHR(device_, swapchain_, nullptr);
   swapchain_ = VK_NULL_HANDLE;
@@ -376,14 +301,9 @@ void Application::Renderer::RecreateSwapchain() {
   DestroySwapchain();
   CreateSwapchain();
   CreateDepthResources();
-  CreateShadowmapResources();
-  if (scene_ != nullptr) {
-    CreateDirectionalLightShadowmapSampler();
-    WriteDescriptorSets();
-  }
-  CreateRenderPasses();
-  CreatePipelines();
-  CreateFramebuffers();
+  CreateRenderPasses(false);
+  CreatePipelines(false);
+  CreateFramebuffers(false);
 }
 void Application::Renderer::CreatePipelineCache() {
   VkPipelineCacheCreateInfo pipeline_cache_ci{};
@@ -396,35 +316,20 @@ void Application::Renderer::CreatePipelineCache() {
                                                   nullptr, &pipeline_cache_);
   ASSERT(create_result == VK_SUCCESS, "Failed to create pipeline cache!");
 }
-void Application::Renderer::CreatePipelines() {
+void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateGraphicsPipeline();
   CreateDebugDrawPipeline();
   CreateDebugDrawLinesPipeline();
-  CreateDepthmapPipeline();
+  if (include_fixed_size) CreateDepthmapPipeline();
 }
-void Application::Renderer::CreateRenderPasses() {
+void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
   CreateGraphicsRenderPass();
-  CreateDepthmapRenderPass();
+  if(include_fixed_size) CreateDepthmapRenderPass();
 }
-void Application::Renderer::CreateFramebuffers() {
+void Application::Renderer::CreateFramebuffers(bool include_fixed_size) {
   CreateGraphicsFramebuffers();
-  CreateShadowmapFramebuffers();
+  if (include_fixed_size) CreateDirectionalShadowmapFramebuffers();
 }
-std::vector<char> Application::Renderer::ReadFile(const std::string& path) {
-
-    std::ifstream file(path, std::ios::ate | std::ios::binary);
-
-    ASSERT(file.is_open(), "Could not open file: " + path + "!");
-
-    size_t fileSize = (size_t)file.tellg();
-    std::vector<char> buffer(fileSize);
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
-
-    return buffer;
-}
-
 VkShaderModule Application::Renderer::CreateShaderModule(
   const std::vector<char>& buffer) {
   size_t file_size = buffer.size();
@@ -440,7 +345,7 @@ VkShaderModule Application::Renderer::CreateShaderModule(
   return shader;
 }
 
-void Application::Renderer::CreateSampler() {
+void Application::Renderer::CreateSamplers() {
   VkSamplerCreateInfo sampler_ci{};
   sampler_ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
   sampler_ci.pNext = nullptr;
@@ -459,8 +364,28 @@ void Application::Renderer::CreateSampler() {
   sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
   sampler_ci.unnormalizedCoordinates = VK_FALSE;
   VkResult create_result =
-      vkCreateSampler(device_, &sampler_ci, nullptr, &sampler_);
-  ASSERT(create_result == VK_SUCCESS, "Failed to create sampler!");
+      vkCreateSampler(device_, &sampler_ci, nullptr, &shadowmap_sampler_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create shadowmap sampler!");
+
+  sampler_ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  sampler_ci.pNext = nullptr;
+  sampler_ci.flags = 0;
+  sampler_ci.magFilter = VK_FILTER_LINEAR;
+  sampler_ci.minFilter = VK_FILTER_LINEAR;
+  sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  sampler_ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  sampler_ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  sampler_ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  sampler_ci.mipLodBias = 0.0;
+  sampler_ci.anisotropyEnable = VK_TRUE;
+  sampler_ci.maxAnisotropy = 1.0f;
+  sampler_ci.minLod = 0.0f;
+  sampler_ci.maxLod = 1.0f;
+  sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+  sampler_ci.unnormalizedCoordinates = VK_FALSE;
+  create_result =
+      vkCreateSampler(device_, &sampler_ci, nullptr, &texture_sampler_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create texture sampler!");
 }
 
 void Application::Renderer::CreateCommandPool() {
@@ -562,9 +487,9 @@ void Application::Renderer::CreateGraphicsRenderPass() {
 }
 void Application::Renderer::CreateGraphicsPipeline() {
   const std::vector<char> vert_shader_code =
-      ReadFile("../assets/shaders/phong.vert.spv");
+      ReadFile("../assets/shaders/pbr.vert.spv");
   const std::vector<char> frag_shader_code =
-      ReadFile("../assets/shaders/phong.frag.spv");
+      ReadFile("../assets/shaders/pbr.frag.spv");
 
   VkShaderModule vert_shader =
       CreateShaderModule(vert_shader_code);
@@ -617,13 +542,27 @@ void Application::Renderer::CreateGraphicsPipeline() {
   vertex_uv_ad.location = 2;
   vertex_uv_ad.offset = offsetof(Vertex, uv);
 
-  VkVertexInputAttributeDescription vertex_ads[] = {vertex_pos_ad,vertex_norm_ad,vertex_uv_ad};
+  VkVertexInputAttributeDescription vertex_tan_ad{};
+  vertex_tan_ad.binding = 0;
+  vertex_tan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_tan_ad.location = 3;
+  vertex_tan_ad.offset = offsetof(Vertex, tangent);
+
+  VkVertexInputAttributeDescription vertex_bitan_ad{};
+  vertex_bitan_ad.binding = 0;
+  vertex_bitan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+  vertex_bitan_ad.location = 4;
+  vertex_bitan_ad.offset = offsetof(Vertex, bitangent);
+
+  VkVertexInputAttributeDescription vertex_ads[] = {
+      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad, vertex_tan_ad,
+      vertex_bitan_ad};
 
   VkPipelineVertexInputStateCreateInfo vertex_input_info{};
   vertex_input_info.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_info.vertexBindingDescriptionCount = 1;
-  vertex_input_info.vertexAttributeDescriptionCount = 3;
+  vertex_input_info.vertexAttributeDescriptionCount = 5;
   vertex_input_info.pVertexBindingDescriptions = &vertex_bd;
   vertex_input_info.pVertexAttributeDescriptions = vertex_ads;
 
