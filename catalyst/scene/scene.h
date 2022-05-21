@@ -43,6 +43,7 @@ class Scene {
   static const uint32_t kMaxShadowmapResolution = 1024;
   static const uint32_t kMaxTextures = 16;
   static const uint32_t kMaxTextureResolution = 2048;
+  static const uint32_t kMaxTextureMipLevels = 12;
   static const uint32_t kMaxMaterials = 128;
 
   SceneObject* root_;

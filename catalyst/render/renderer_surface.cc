@@ -257,7 +257,7 @@ void Application::Renderer::CreateTextureResources() {
   tex_extent.depth = 1;
   for (uint32_t tex_i = 0; tex_i < Scene::kMaxTextures; tex_i++) {
     CreateImage(texture_images_[tex_i], texture_memory_[tex_i],
-                VK_FORMAT_R8G8B8A8_SRGB, tex_extent, 1,
+                VK_FORMAT_R8G8B8A8_SRGB, tex_extent, Scene::kMaxTextureMipLevels,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     CreateImageView(texture_image_views_[tex_i], texture_images_[tex_i],
