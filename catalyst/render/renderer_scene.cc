@@ -497,8 +497,7 @@ void Application::Renderer::DrawScenePrePass(VkCommandBuffer& cmd,
         details.directional_light_uniform.lights_[light_count].world_to_light_transform =
             glm::inverse(light_to_world_transform);
         details.directional_light_uniform.lights_[light_count]
-            .light_to_clip_transform =
-            DirectionalLightObject::GetViewToClipTransform();
+            .light_to_clip_transform = light_object->GetViewToClipTransform();
         details.directional_light_uniform.lights_[light_count].color =
             light_object->color_;
         details.directional_light_uniform.light_count_++;

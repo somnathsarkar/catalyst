@@ -52,19 +52,27 @@ CameraObject::CameraObject(Scene* scene, const std::string& name,
 }
 DirectionalLightObject::DirectionalLightObject(Scene* scene,
                                                const std::string& name,
-                                               glm::vec3 color)
-    : SceneObject(scene, name), color_(color) {
+                                               glm::vec3 color, float distance)
+    : SceneObject(scene, name), color_(color), distance_(distance) {
   std::function<void(glm::vec3)> color_setter =
       [this](glm::vec3 new_value) -> void { this->color_ = new_value; };
   std::function<glm::vec3()> color_getter = [this]() -> glm::vec3 {
     return this->color_;
   };
+  std::function<void(float)> dist_setter = [this](float new_value) -> void {
+    this->distance_ = new_value;
+  };
+  std::function<float()> dist_getter = [this]() -> float {
+    return this->distance_;
+  };
   type_ = SceneObjectType::kDirectionalLight;
   property_manager_.AddVec3Property("Color", color_getter, color_setter, 0.0f,
                                     1.0f);
+  property_manager_.AddFloatProperty("Distance", dist_getter, dist_setter, 0.5f,
+                                     100.0f);
 }
-glm::mat4 DirectionalLightObject::GetViewToClipTransform() {
-  const float near = 0.1f, far = 50.0f;
+glm::mat4 DirectionalLightObject::GetViewToClipTransform() const {
+  const float near = 0.1f, far = distance_;
   const float width = 10.0f, height = 10.0f;
   glm::mat4 proj_mat(0.0f);
   proj_mat[0][0] = 2.0f / width;
