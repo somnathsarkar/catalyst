@@ -59,9 +59,14 @@ class CameraObject : public SceneObject {
 class DirectionalLightObject : public SceneObject {
  public:
   glm::vec3 color_;
+  float cast_width_;
+  float cast_height_;
+  float cast_distance_;
 
   DirectionalLightObject(Scene* scene, const std::string& name,
-                         glm::vec3 color = glm::vec3(1.0f));
-  static glm::mat4 GetViewToClipTransform();
+                         glm::vec3 color = glm::vec3(1.0f),
+                         float cast_width = 10.0f, float cast_height = 10.0f,
+                         float cast_distance = 10.0f);
+  glm::mat4 GetViewToClipTransform() const;
 };
 }

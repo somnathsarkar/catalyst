@@ -66,7 +66,14 @@ void main() {
         roughness = texture(textures[material.roughness_texture_id],texCoords).r;
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){
         DirectionalLight light = directional_light_uniform.lights[light_i];
-        vec3 world_light = -vec3(inverse(light.world_to_light_transform)[1]);
+        mat4 light_to_world_transform = inverse(light.world_to_light_transform);
+        vec3 world_light_pos = light_to_world_transform[3].xyz/light_to_world_transform[3].w;
+        vec3 world_light_rel_pos = world_light_pos-worldPos.xyz/worldPos.w;
+        vec3 world_light = -vec3(light_to_world_transform[1]);
+        // Check if point is behind directional light
+        if(dot(world_light_rel_pos,world_light)<=0.0f){
+            continue;
+        }
         vec3 l = normalize(world_light);
         vec3 h = normalize((l+v));
         // Height Correlated Smith G2 with GGX NDF

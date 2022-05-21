@@ -50,22 +50,50 @@ CameraObject::CameraObject(Scene* scene, const std::string& name,
   type_ = SceneObjectType::kCamera;
   camera_id_ = camera_id;
 }
-DirectionalLightObject::DirectionalLightObject(Scene* scene,
-                                               const std::string& name,
-                                               glm::vec3 color)
-    : SceneObject(scene, name), color_(color) {
+DirectionalLightObject::DirectionalLightObject(
+    Scene* scene, const std::string& name, glm::vec3 color, float cast_width,
+    float cast_height, float cast_distance)
+    : SceneObject(scene, name),
+      color_(color),
+      cast_width_(cast_width),
+      cast_height_(cast_height),
+      cast_distance_(cast_distance) {
   std::function<void(glm::vec3)> color_setter =
       [this](glm::vec3 new_value) -> void { this->color_ = new_value; };
   std::function<glm::vec3()> color_getter = [this]() -> glm::vec3 {
     return this->color_;
   };
+  std::function<void(float)> width_setter = [this](float new_value) -> void {
+    this->cast_width_ = new_value;
+  };
+  std::function<float()> width_getter = [this]() -> float {
+    return this->cast_width_;
+  };
+  std::function<void(float)> height_setter = [this](float new_value) -> void {
+    this->cast_height_ = new_value;
+  };
+  std::function<float()> height_getter = [this]() -> float {
+    return this->cast_height_;
+  };
+  std::function<void(float)> dist_setter = [this](float new_value) -> void {
+    this->cast_distance_ = new_value;
+  };
+  std::function<float()> dist_getter = [this]() -> float {
+    return this->cast_distance_;
+  };
   type_ = SceneObjectType::kDirectionalLight;
   property_manager_.AddVec3Property("Color", color_getter, color_setter, 0.0f,
                                     1.0f);
+  property_manager_.AddFloatProperty("Cast Width", width_getter, width_setter,
+                                     0.5f, 100.0f);
+  property_manager_.AddFloatProperty("Cast Height", height_getter,
+                                     height_setter, 0.5f, 100.0f);
+  property_manager_.AddFloatProperty("Cast Distance", dist_getter, dist_setter,
+                                     0.5f, 100.0f);
 }
-glm::mat4 DirectionalLightObject::GetViewToClipTransform() {
-  const float near = 0.1f, far = 50.0f;
-  const float width = 10.0f, height = 10.0f;
+glm::mat4 DirectionalLightObject::GetViewToClipTransform() const {
+  const float near = 0.1f, far = cast_distance_;
+  const float width = cast_width_, height = cast_height_;
   glm::mat4 proj_mat(0.0f);
   proj_mat[0][0] = 2.0f / width;
   proj_mat[1][1] = 1.0f / (far - near);
