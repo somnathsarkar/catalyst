@@ -489,11 +489,15 @@ void Application::Renderer::DrawScenePrePass(VkCommandBuffer& cmd,
           reinterpret_cast<const DirectionalLightObject*>(focus);
       uint32_t light_count = details.directional_light_uniform.light_count_;
       if (light_count < Scene::kMaxDirectionalLights) {
-        const float kDirectionalLightDistance = 10.0f;
-        glm::mat4 light_to_world_transform =
-            light_object->transform_.GetOrientationMatrix();
-        light_to_world_transform[3] =
-            glm::vec4(glm::vec3(light_to_world_transform[1]) * -kDirectionalLightDistance, 1.0f);
+        glm::mat4 light_to_world_transform = model_transform;
+        // Directional lights should not scale the world
+        light_to_world_transform[0] =
+            glm::normalize(light_to_world_transform[0]);
+        light_to_world_transform[1] =
+            glm::normalize(light_to_world_transform[1]);
+        light_to_world_transform[2] =
+            glm::normalize(light_to_world_transform[2]);
+
         details.directional_light_uniform.lights_[light_count].world_to_light_transform =
             glm::inverse(light_to_world_transform);
         details.directional_light_uniform.lights_[light_count]
