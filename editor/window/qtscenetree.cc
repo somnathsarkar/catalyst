@@ -49,22 +49,24 @@ void EditorWindow::QtWindow::QtSceneTree::QtSceneAddBox::ProcessAddCommand(AddOp
     case AddOption::kNone:
       break;
     case AddOption::kEmpty: {
-      scene->AddPrimitive(scene->root_, catalyst::PrimitiveType::kEmpty);
+      scene->AddPrimitiveMesh(scene->root_,
+                              catalyst::PrimitiveMeshType::kEmpty);
       scene_tree_->treeview_->Populate();
       break;
     }
     case AddOption::kCube: {
-      scene->AddPrimitive(scene->root_, catalyst::PrimitiveType::kCube);
+      scene->AddPrimitiveMesh(scene->root_, catalyst::PrimitiveMeshType::kCube);
       scene_tree_->treeview_->Populate();
       break;
     }
     case AddOption::kTeapot: {
-      scene->AddPrimitive(scene->root_, catalyst::PrimitiveType::kTeapot);
+      scene->AddPrimitiveMesh(scene->root_,
+                              catalyst::PrimitiveMeshType::kTeapot);
       scene_tree_->treeview_->Populate();
       break;
     }
     case AddOption::kBunny: {
-      scene->AddPrimitive(scene->root_, catalyst::PrimitiveType::kBunny);
+      scene->AddPrimitiveMesh(scene->root_, catalyst::PrimitiveMeshType::kBunny);
       scene_tree_->treeview_->Populate();
       break;
     }

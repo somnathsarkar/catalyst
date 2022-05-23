@@ -47,6 +47,7 @@ target_sources(catalyst PRIVATE
 
 target_shader_pairs(catalyst "phong" "debugdraw" "depthmap" "pbr")
 target_models(catalyst "bun_zipper.obj" "teapot.obj")
+target_textures(catalyst "black.png" "white.png")
 
 if(MSVC)
   target_compile_options(catalyst PUBLIC "/Zi")

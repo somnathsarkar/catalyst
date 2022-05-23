@@ -13,9 +13,11 @@ enum class ResourceType : uint32_t {
   kMesh = 1,
   kMaterial = 2,
   kTexture = 3,
+  kCubemap = 4,
+  kSkybox = 5,
 };
-const std::string kResourceTypeNames[] = {"Undefined", "Mesh", "Material",
-                                          "Texture"};
+const std::string kResourceTypeNames[] = {"Undefined", "Mesh",    "Material",
+                                          "Texture",   "Cubemap", "Skybox"};
 class Resource {
  public:
   std::string name_;
@@ -56,7 +58,7 @@ class Material : public Resource {
   float reflectance_;
   Material(Scene* scene, const std::string& name);
 };
-struct Texture : public Resource {
+class Texture : public Resource {
  public:
   std::string path_;
   Texture(Scene* scene, const std::string& name);

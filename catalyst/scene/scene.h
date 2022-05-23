@@ -28,13 +28,21 @@ class Camera {
   glm::mat4 GetOrthographicTransform(uint32_t screen_width,
                                      uint32_t screen_height) const;
 };
-enum class PrimitiveType {
+enum class PrimitiveMeshType : uint32_t {
   kEmpty = 0,
   kCube = 1,
   kTeapot = 2,
   kBunny = 3,
 };
-const std::string kPrimitiveNames[] = {"Empty", "Cube", "Teapot", "Bunny"};
+const std::string kPrimitiveMeshNames[] = {"Empty", "Cube", "Teapot", "Bunny"};
+enum class PrimitiveTextureType : uint32_t {
+  kBlack = 0,
+  kWhite = 1,
+};
+const std::string kPrimitiveTextureNames[] = {
+    "Black",
+    "White",
+};
 class Scene {
  public:
   static const uint32_t kMaxVertices = 1000000;
@@ -57,7 +65,7 @@ class Scene {
   ~Scene();
 
   // Add Objects
-  MeshObject* AddPrimitive(SceneObject* parent, PrimitiveType type);
+  MeshObject* AddPrimitiveMesh(SceneObject* parent, PrimitiveMeshType type);
   CameraObject* AddCamera(SceneObject* parent, CameraType type);
   DirectionalLightObject* AddDirectionalLight(
       SceneObject* parent, glm::vec3 color = glm::vec3(1.0f));
@@ -89,6 +97,7 @@ class Scene {
   std::string GetAvailableResourceName(const std::string& prefix);
   void CreatePrimitiveMeshes();
   void CreatePrimitiveMaterials();
+  void CreatePrimitiveTextures();
   Aabb ComputeAabb(const SceneObject* scene_object) const;
   void AabbDfs(const SceneObject* focus, Aabb& aabb,
                glm::mat4 transform = glm::mat4(1.0f)) const;

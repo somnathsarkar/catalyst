@@ -12,8 +12,7 @@ Material::Material(Scene* scene, const std::string& name)
       normal_texture_id_(-1),
       roughness_(0.0f),
       roughness_texture_id_(-1),
-      reflectance_(1.0f)
-{
+      reflectance_(1.0f) {
   std::function<glm::vec3()> color_getter = [this]() -> glm::vec3 {
     return this->albedo_;
   };
@@ -68,11 +67,14 @@ Material::Material(Scene* scene, const std::string& name)
       Property::CreateIntegerSetter(&metallic_texture_id_), texture_name_getter,
       NamedIndexPropertyStyle::kAllowNone);
 }
-Resource::Resource(Scene* scene, const std::string& name, const ResourceType type)
+Resource::Resource(Scene* scene, const std::string& name,
+                   const ResourceType type)
     : name_(name), type_(type), property_manager_(), scene_(scene) {}
 Mesh::Mesh(Scene* scene, const std::string& name)
     : Resource(scene, name, ResourceType::kMesh), material_id(0) {
-  std::function<int()> mat_getter_ = [this]() -> int { return static_cast<int>(this->material_id); };
+  std::function<int()> mat_getter_ = [this]() -> int {
+    return static_cast<int>(this->material_id);
+  };
   std::function<void(int)> mat_setter_ = [this](int new_value) {
     this->material_id = static_cast<uint32_t>(new_value);
   };
