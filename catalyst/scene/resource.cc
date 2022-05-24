@@ -91,4 +91,27 @@ Mesh::Mesh(Scene* scene, const std::string& name)
 }
 Texture::Texture(Scene* scene, const std::string& name)
     : Resource(scene, name, ResourceType::kTexture) {}
+Cubemap::Cubemap(Scene* scene, const std::string& name)
+    : Resource(scene, name, ResourceType::kCubemap) {}
+Skybox::Skybox(Scene* scene, const std::string& name)
+    : Resource(scene, name, ResourceType::kSkybox),
+      specular_cubemap_id_(-1),
+      diffuse_cubemap_id_(-1) {
+  std::function<std::vector<std::string>()> cubemap_name_getter =
+      [this]() -> std::vector<std::string> {
+    std::vector<std::string> result;
+    for (const Cubemap* cmap : this->scene_->cubemaps_) {
+      result.push_back(cmap->name_);
+    }
+    return result;
+  };
+  property_manager_.AddNamedIndexProperty(
+      "Specular Cubemap", Property::CreateIntegerGetter(&specular_cubemap_id_),
+      Property::CreateIntegerSetter(&specular_cubemap_id_), cubemap_name_getter,
+      NamedIndexPropertyStyle::kAllowNone);
+  property_manager_.AddNamedIndexProperty(
+      "Diffuse Cubemap", Property::CreateIntegerGetter(&diffuse_cubemap_id_),
+      Property::CreateIntegerSetter(&diffuse_cubemap_id_), cubemap_name_getter,
+      NamedIndexPropertyStyle::kAllowNone);
+}
 }  // namespace catalyst

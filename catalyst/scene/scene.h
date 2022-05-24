@@ -34,7 +34,12 @@ enum class PrimitiveMeshType : uint32_t {
   kTeapot = 2,
   kBunny = 3,
 };
-const std::string kPrimitiveMeshNames[] = {"Empty", "Cube", "Teapot", "Bunny"};
+const std::string kPrimitiveMeshNames[] = {
+    "Empty",
+    "Cube",
+    "Teapot",
+    "Bunny",
+};
 enum class PrimitiveTextureType : uint32_t {
   kBlack = 0,
   kWhite = 1,
@@ -43,7 +48,21 @@ const std::string kPrimitiveTextureNames[] = {
     "Black",
     "White",
 };
-class Scene {
+enum class PrimitiveCubemapType : uint32_t {
+  kMeadowSpecular = 0,
+  kMeadowDiffuse = 1,
+};
+const std::string kPrimitiveCubemapNames[] = {
+    "Meadow Specular",
+    "Meadow Diffuse",
+};
+enum class PrimitiveSkyboxType : uint32_t {
+  kMeadow = 0,
+};
+const std::string kPrimitiveSkyboxNames[] = {
+    "Meadow",
+};
+const class Scene {
  public:
   static const uint32_t kMaxVertices = 1000000;
   static const uint32_t kMaxDebugDrawVertices = 1024;
@@ -58,6 +77,8 @@ class Scene {
   std::vector<Mesh*> meshes_;
   std::vector<Material*> materials_;
   std::vector<Texture*> textures_;
+  std::vector<Cubemap*> cubemaps_;
+  std::vector<Skybox*> skyboxes_;
   std::vector<Camera> cameras_;
   std::vector<DebugDrawObject*> debugdraw_objects_;
 
@@ -76,6 +97,8 @@ class Scene {
   Mesh* AddMesh(const std::string& name);
   Material* AddMaterial(const std::string& name);
   Texture* AddTexture(const std::string& name);
+  Cubemap* AddCubemap(const std::string& name);
+  Skybox* AddSkybox(const std::string& name);
   void DuplicateResource(const Resource* resource);
 
   SceneObject* GetObjectByName(const std::string& name) const;
@@ -98,6 +121,8 @@ class Scene {
   void CreatePrimitiveMeshes();
   void CreatePrimitiveMaterials();
   void CreatePrimitiveTextures();
+  void CreatePrimitiveCubemaps();
+  void CreatePrimitiveSkyboxes();
   Aabb ComputeAabb(const SceneObject* scene_object) const;
   void AabbDfs(const SceneObject* focus, Aabb& aabb,
                glm::mat4 transform = glm::mat4(1.0f)) const;

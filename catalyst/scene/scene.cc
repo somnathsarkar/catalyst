@@ -18,6 +18,8 @@ Scene::Scene() {
   CreatePrimitiveMeshes();
   CreatePrimitiveTextures();
   CreatePrimitiveMaterials();
+  CreatePrimitiveCubemaps();
+  CreatePrimitiveSkyboxes();
 }
 Scene::~Scene() { delete root_; }
 MeshObject* Scene::AddPrimitiveMesh(SceneObject* parent, PrimitiveMeshType type) {
@@ -107,6 +109,20 @@ Texture* Scene::AddTexture(const std::string& name) {
   textures_.push_back(tex);
   resource_name_map_[tex_name] = tex;
   return tex;
+}
+Cubemap* Scene::AddCubemap(const std::string& name) {
+  std::string cmap_name = GetAvailableResourceName(name);
+  Cubemap* cmap = new Cubemap(this, cmap_name);
+  cubemaps_.push_back(cmap);
+  resource_name_map_[cmap_name] = cmap;
+  return cmap;
+}
+Skybox* Scene::AddSkybox(const std::string& name) {
+  std::string sbox_name = GetAvailableResourceName(name);
+  Skybox* sbox = new Skybox(this, sbox_name);
+  skyboxes_.push_back(sbox);
+  resource_name_map_[sbox_name] = sbox;
+  return sbox;
 }
 void Scene::DuplicateResource(const Resource* resource) {
   const std::string& initial_name = resource->name_;
@@ -315,7 +331,26 @@ void Scene::CreatePrimitiveTextures() {
           PrimitiveTextureType::kWhite)]);
   white_texture->path_ = "../assets/textures/white.png";
 }
-Aabb Scene::ComputeAabb(const SceneObject* scene_object) const {
+void Scene::CreatePrimitiveCubemaps() {
+  Cubemap* meadow_specular =
+      AddCubemap(kPrimitiveCubemapNames[static_cast<uint32_t>(
+          PrimitiveCubemapType::kMeadowSpecular)]);
+  meadow_specular->path_ = "../assets/cubemaps/meadow/specular";
+  Cubemap* meadow_diffuse =
+      AddCubemap(kPrimitiveCubemapNames[static_cast<uint32_t>(
+          PrimitiveCubemapType::kMeadowDiffuse)]);
+  meadow_diffuse->path_ = "../assets/cubemaps/meadow/diffuse";
+}
+void Scene::CreatePrimitiveSkyboxes() {
+  Skybox* meadow = AddSkybox(kPrimitiveSkyboxNames[static_cast<uint32_t>(
+      PrimitiveSkyboxType::kMeadow)]);
+  meadow->specular_cubemap_id_ =
+      static_cast<uint32_t>(PrimitiveCubemapType::kMeadowSpecular);
+  meadow->diffuse_cubemap_id_ =
+      static_cast<uint32_t>(PrimitiveCubemapType::kMeadowDiffuse);
+}
+Aabb
+    Scene::ComputeAabb(const SceneObject* scene_object) const {
   glm::mat4 parent_transform = GetParentTransform(scene_object);
   Aabb aabb(
       glm::vec3(parent_transform *

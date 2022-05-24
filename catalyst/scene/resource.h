@@ -63,4 +63,15 @@ class Texture : public Resource {
   std::string path_;
   Texture(Scene* scene, const std::string& name);
 };
+class Cubemap : public Resource {
+ public:
+  std::string path_;
+  Cubemap(Scene* scene, const std::string& name);
+};
+class Skybox : public Resource {
+ public:
+  int specular_cubemap_id_;
+  int diffuse_cubemap_id_;
+  Skybox(Scene* scene, const std::string& name);
+};
 }  // namespace catalyst
