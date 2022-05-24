@@ -49,6 +49,7 @@ void Application::Renderer::StartUp() {
   CreateDirectionalShadowmapResources();
   CreateMaterialUniformBuffer();
   CreateTextureResources();
+  CreateCubemapResources();
   WriteDescriptorSets();
 
   CreateFramebuffers();
@@ -105,6 +106,15 @@ void Application::Renderer::LateShutDown() {
   texture_image_views_.clear();
   texture_images_.clear();
   texture_memory_.clear();
+
+  for (uint32_t cubemap_i = 0; cubemap_i < Scene::kMaxCubemaps; cubemap_i++) {
+    vkDestroyImageView(device_, cubemap_image_views_[cubemap_i], nullptr);
+    vkFreeMemory(device_, cubemap_memory_[cubemap_i], nullptr);
+    vkDestroyImage(device_, cubemap_images_[cubemap_i], nullptr);
+  }
+  cubemap_image_views_.clear();
+  cubemap_images_.clear();
+  cubemap_memory_.clear();
 
   vkDestroyBuffer(device_, vertex_buffer_, nullptr);
   vkFreeMemory(device_, vertex_memory_, nullptr);

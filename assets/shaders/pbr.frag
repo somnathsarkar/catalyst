@@ -34,6 +34,8 @@ layout(binding = 2, set = 0, std140) uniform material_uniform_block{
 
 layout(binding = 3) uniform sampler2D textures[16];
 
+layout(binding = 4) uniform samplerCube cubemaps[2];
+
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;
 layout(location = 2) in vec3 worldTangent;

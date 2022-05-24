@@ -80,6 +80,7 @@ class Application :: Renderer {
     uint32_t texture_count;
     uint32_t vertex_count;
     uint32_t index_count;
+    uint32_t cubemap_count;
     std::vector<uint32_t> vertex_offsets_;
     std::vector<uint32_t> index_offsets_;
   };
@@ -154,6 +155,9 @@ class Application :: Renderer {
   std::vector<VkDeviceMemory> texture_memory_;
   std::vector<VkImage> texture_images_;
   std::vector<VkImageView> texture_image_views_;
+  std::vector<VkDeviceMemory> cubemap_memory_;
+  std::vector<VkImage> cubemap_images_;
+  std::vector<VkImageView> cubemap_image_views_;
 
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
@@ -234,11 +238,13 @@ class Application :: Renderer {
   void CreateDirectionalShadowmapResources();
   void CreateMaterialUniformBuffer();
   void CreateTextureResources();
+  void CreateCubemapResources();
 
   // Scene Resources
   void LoadSceneResources();
   void LoadMeshes();
   void LoadTextures();
+  void LoadCubemaps();
 
   // Utilities - renderer_utilities.cc
   static std::vector<char> ReadFile(const std::string& path);
@@ -248,11 +254,12 @@ class Application :: Renderer {
                     const VkDeviceSize& size, const VkBufferUsageFlags& usage,
                     const VkMemoryPropertyFlags& req_props);
   void CreateImage(VkImage& image, VkDeviceMemory& memory,
-                   const VkFormat format, const VkExtent3D extent,
-                   const uint32_t mip_levels, const VkImageUsageFlags usage,
+                   VkImageCreateFlags flags, const VkFormat format,
+                   const VkExtent3D extent, const uint32_t mip_levels,
+                   const uint32_t array_layers, const VkImageUsageFlags usage,
                    const VkMemoryPropertyFlags req_props);
   void CreateImageView(VkImageView& image_view, VkImage& image,
-                       const VkFormat format,
+                       VkImageViewType type, const VkFormat format,
                        const VkImageAspectFlags aspect_flags);
   void TransitionImageLayout(VkImage& image,
                              const VkImageAspectFlagBits image_aspect,

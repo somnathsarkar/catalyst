@@ -31,6 +31,7 @@ void Application::Renderer::LoadScene(const Scene& scene) {
 void Application::Renderer::LoadSceneResources() {
   LoadMeshes();
   LoadTextures();
+  LoadCubemaps();
 }
 void Application::Renderer::LoadMeshes() {
   uint32_t mesh_count = static_cast<uint32_t>(scene_->meshes_.size());
@@ -153,8 +154,8 @@ void Application::Renderer::LoadTextures() {
     VkImage staging_image = VK_NULL_HANDLE;
     VkDeviceMemory staging_image_memory;
     CreateImage(
-        staging_image, staging_image_memory, VK_FORMAT_R8G8B8A8_SRGB,
-        {tex_data->width, tex_data->height, 1}, 1,
+        staging_image, staging_image_memory, 0, VK_FORMAT_R8G8B8A8_SRGB,
+        {tex_data->width, tex_data->height, 1}, 1, 1,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -232,6 +233,123 @@ void Application::Renderer::LoadTextures() {
     vkDestroyBuffer(device_,staging_buffer,nullptr);
   }
   scene_resource_details_.texture_count = tex_count;
+}
+void Application::Renderer::LoadCubemaps() {
+  static const std::string faces[] = {"posx", "negx", "posy",
+                                      "negy", "posz", "negz"};
+  uint32_t cmap_count = static_cast<uint32_t>(scene_->cubemaps_.size());
+  if (scene_resource_details_.cubemap_count == cmap_count) return;
+  TextureImporter texture_importer;
+  for (uint32_t cmap_i = scene_resource_details_.cubemap_count;
+       cmap_i < cmap_count; cmap_i++) {
+    TransitionImageLayout(cubemap_images_[cmap_i], VK_IMAGE_ASPECT_COLOR_BIT,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                          VK_ACCESS_TRANSFER_WRITE_BIT);
+    for (uint32_t face_i = 0; face_i < 6; face_i++) {
+      std::string face_path =
+          scene_->cubemaps_[cmap_i]->path_ + "/" + faces[face_i] + ".jpg";
+      bool read_success = texture_importer.ReadFile(face_path);
+      ASSERT(read_success, "Failed to read image: " + face_path);
+      const TextureData* tex_data = texture_importer.GetData();
+      size_t tex_size =
+          (tex_data->height) * (tex_data->width) * (tex_data->channels);
+
+      // Staging buffer
+      VkBuffer staging_buffer;
+      VkDeviceMemory staging_memory;
+      CreateBuffer(staging_buffer, staging_memory, tex_size,
+                   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+      // Copy texture data to staging buffer
+      void* data;
+      vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &data);
+      memcpy(data, tex_data->data, tex_size);
+      vkUnmapMemory(device_, staging_memory);
+
+      // Staging image
+      VkImage staging_image = VK_NULL_HANDLE;
+      VkDeviceMemory staging_image_memory;
+      CreateImage(
+          staging_image, staging_image_memory, 0, VK_FORMAT_R8G8B8A8_SRGB,
+          {tex_data->width, tex_data->height, 1}, 1, 1,
+          VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      VkBufferImageCopy buffer_cp{};
+      buffer_cp.bufferOffset = 0;
+      buffer_cp.bufferRowLength = 0;
+      buffer_cp.bufferImageHeight = 0;
+      buffer_cp.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      buffer_cp.imageSubresource.mipLevel = 0;
+      buffer_cp.imageSubresource.baseArrayLayer = 0;
+      buffer_cp.imageSubresource.layerCount = 1;
+      buffer_cp.imageOffset = {0};
+      buffer_cp.imageExtent.width = tex_data->width;
+      buffer_cp.imageExtent.height = tex_data->height;
+      buffer_cp.imageExtent.depth = 1;
+
+      // Copy texture data to staging image
+      VkCommandBuffer cmd;
+      TransitionImageLayout(
+          staging_image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+          VK_ACCESS_TRANSFER_WRITE_BIT);
+      BeginSingleUseCommandBuffer(cmd);
+      vkCmdCopyBufferToImage(cmd, staging_buffer, staging_image,
+                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                             &buffer_cp);
+      EndSingleUseCommandBuffer(cmd);
+      TransitionImageLayout(
+          staging_image, VK_IMAGE_ASPECT_COLOR_BIT,
+          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+          VK_ACCESS_TRANSFER_READ_BIT);
+
+      // Blit texture to every mip map
+      BeginSingleUseCommandBuffer(cmd);
+      std::vector<VkImageBlit> blits(Scene::kMaxTextureMipLevels);
+      for (uint32_t mip_i = 0; mip_i < Scene::kMaxTextureMipLevels; mip_i++) {
+        VkImageBlit& blit = blits[mip_i];
+        blit.srcOffsets[0] = {0, 0, 0};
+        blit.srcOffsets[1] = {static_cast<int32_t>(tex_data->width),
+                              static_cast<int32_t>(tex_data->height), 1};
+        blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.srcSubresource.baseArrayLayer = 0;
+        blit.srcSubresource.layerCount = 1;
+        blit.srcSubresource.mipLevel = 0;
+        blit.dstOffsets[0] = {0, 0, 0};
+        int32_t mip_dim = Scene::kMaxTextureResolution / (1 << mip_i);
+        blit.dstOffsets[1] = {mip_dim, mip_dim, 1};
+        blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.dstSubresource.baseArrayLayer = face_i;
+        blit.dstSubresource.layerCount = 1;
+        blit.dstSubresource.mipLevel = mip_i;
+      }
+      vkCmdBlitImage(
+          cmd, staging_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+          cubemap_images_[cmap_i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          Scene::kMaxTextureMipLevels, blits.data(), VK_FILTER_LINEAR);
+      EndSingleUseCommandBuffer(cmd);
+
+      vkFreeMemory(device_, staging_image_memory, nullptr);
+      vkDestroyImage(device_, staging_image, nullptr);
+      vkFreeMemory(device_, staging_memory, nullptr);
+      vkDestroyBuffer(device_, staging_buffer, nullptr);
+    }
+    TransitionImageLayout(
+        cubemap_images_[cmap_i], VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+  }
+  scene_resource_details_.cubemap_count = cmap_count;
 }
 void Application::Renderer::CreateVertexBuffer() {
   CreateBuffer(
