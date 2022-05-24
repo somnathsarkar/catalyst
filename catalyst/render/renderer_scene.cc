@@ -409,6 +409,10 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
     mat_uniform.roughness_texture_id = mat->roughness_texture_id_;
     mat_uniform.normal_texture_id = mat->normal_texture_id_;
   }
+  details.skybox_uniform.specular_cubemap_id =
+      scene_->skyboxes_[0]->specular_cubemap_id_;
+  details.skybox_uniform.diffuse_cubemap_id =
+      scene_->skyboxes_[0]->diffuse_cubemap_id_;
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
   DrawSceneShadowmaps(cmd, frame_i, details);
@@ -447,6 +451,12 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
   memcpy(static_cast<char*>(material_uniform_data) + material_array_size,
          &details.material_uniform_block.material_count_, sizeof(uint32_t));
   vkUnmapMemory(device_, material_uniform_memory_[frame_i]);
+
+  void* skybox_uniform_data;
+  vkMapMemory(device_, skybox_uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
+              &skybox_uniform_data);
+  memcpy(skybox_uniform_data, &details.skybox_uniform, sizeof(SkyboxUniform));
+  vkUnmapMemory(device_, skybox_uniform_memory_[frame_i]);
 
   DrawSceneMeshes(cmd, graphics_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
 

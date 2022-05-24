@@ -20,6 +20,12 @@ struct Material{
     int _pad;
 };
 
+struct Skybox{
+    int specular_cubemap_id;
+    int diffuse_cubemap_id;
+    ivec2 _pad;
+};
+
 layout(binding = 0, set = 0, std140) uniform directional_light_uniform_block{
     DirectionalLight lights[16];
     int num_lights;
@@ -35,6 +41,10 @@ layout(binding = 2, set = 0, std140) uniform material_uniform_block{
 layout(binding = 3) uniform sampler2D textures[16];
 
 layout(binding = 4) uniform samplerCube cubemaps[2];
+
+layout(binding = 5) uniform skybox_uniform_block{
+    Skybox skybox;
+}skybox_uniform;
 
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;

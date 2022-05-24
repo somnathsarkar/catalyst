@@ -298,6 +298,17 @@ void Application::Renderer::CreateCubemapResources() {
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, VK_ACCESS_SHADER_READ_BIT);
   }
 }
+void Application::Renderer::CreateSkyboxUniformBuffer() {
+  skybox_uniform_buffers_.resize(frame_count_);
+  skybox_uniform_memory_.resize(frame_count_);
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    CreateBuffer(skybox_uniform_buffers_[frame_i],
+                 skybox_uniform_memory_[frame_i], sizeof(SkyboxUniform),
+                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                     VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+  }
+}
 void Application::Renderer::DestroySwapchain() {
   vkDeviceWaitIdle(device_);
 

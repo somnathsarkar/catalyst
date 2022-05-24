@@ -70,10 +70,16 @@ class Application :: Renderer {
     MaterialUniformBlock();
     static size_t GetSize();
   };
+  struct SkyboxUniform {
+    int specular_cubemap_id;
+    int diffuse_cubemap_id;
+    int _pad[2];
+  };
   struct SceneDrawDetails {
     PushConstantData push_constants;
     DirectionalLightUniform directional_light_uniform;
     MaterialUniformBlock material_uniform_block;
+    SkyboxUniform skybox_uniform;
   };
   struct SceneResourceDetails {
     uint32_t mesh_count;
@@ -158,6 +164,8 @@ class Application :: Renderer {
   std::vector<VkDeviceMemory> cubemap_memory_;
   std::vector<VkImage> cubemap_images_;
   std::vector<VkImageView> cubemap_image_views_;
+  std::vector<VkDeviceMemory> skybox_uniform_memory_;
+  std::vector<VkBuffer> skybox_uniform_buffers_;
 
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
@@ -239,6 +247,7 @@ class Application :: Renderer {
   void CreateMaterialUniformBuffer();
   void CreateTextureResources();
   void CreateCubemapResources();
+  void CreateSkyboxUniformBuffer();
 
   // Scene Resources
   void LoadSceneResources();

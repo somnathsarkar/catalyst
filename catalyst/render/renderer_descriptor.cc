@@ -39,15 +39,23 @@ void Application::Renderer::CreateDescriptorSetLayout() {
   cubemap_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
   cubemap_binding.pImmutableSamplers = nullptr;
 
+  VkDescriptorSetLayoutBinding skybox_binding{};
+  skybox_binding.binding = 5;
+  skybox_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  skybox_binding.descriptorCount = 1;
+  skybox_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  skybox_binding.pImmutableSamplers = nullptr;
+
   VkDescriptorSetLayoutBinding bindings[] = {
       directional_light_binding, directional_shadow_binding,
-      material_uniform_binding, texture_binding, cubemap_binding};
+      material_uniform_binding,  texture_binding,
+      cubemap_binding,           skybox_binding};
 
   VkDescriptorSetLayoutCreateInfo layout_ci{};
   layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   layout_ci.pNext = nullptr;
   layout_ci.flags = 0;
-  layout_ci.bindingCount = 5;
+  layout_ci.bindingCount = 6;
   layout_ci.pBindings = bindings;
   VkResult create_result = vkCreateDescriptorSetLayout(
       device_, &layout_ci, nullptr, &descriptor_set_layout_);
@@ -59,7 +67,7 @@ void Application::Renderer::CreateDescriptorPool() {
 
   VkDescriptorPoolSize uniform_size;
   uniform_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  uniform_size.descriptorCount = frame_count*2;
+  uniform_size.descriptorCount = frame_count*3;
   VkDescriptorPoolSize sampler_size;
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
@@ -206,6 +214,24 @@ void Application::Renderer::WriteDescriptorSets() {
     set_wi.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     set_wi.pBufferInfo = nullptr;
     set_wi.pImageInfo = cubemap_image_infos[frame_i].data();
+  }
+  vkUpdateDescriptorSets(device_, frame_count_, set_wis.data(), 0, nullptr);
+
+  // Skybox Uniform
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    VkDescriptorBufferInfo& set_bi = set_bis[frame_i];
+    set_bi.buffer = skybox_uniform_buffers_[frame_i];
+    set_bi.offset = 0;
+    set_bi.range = VK_WHOLE_SIZE;
+    VkWriteDescriptorSet& set_wi = set_wis[frame_i];
+    set_wi.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    set_wi.pNext = nullptr;
+    set_wi.dstSet = descriptor_sets_[frame_i];
+    set_wi.dstBinding = 5;
+    set_wi.dstArrayElement = 0;
+    set_wi.descriptorCount = 1;
+    set_wi.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    set_wi.pBufferInfo = &set_bis[frame_i];
   }
   vkUpdateDescriptorSets(device_, frame_count_, set_wis.data(), 0, nullptr);
 }

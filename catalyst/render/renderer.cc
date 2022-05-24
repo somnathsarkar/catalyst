@@ -50,6 +50,7 @@ void Application::Renderer::StartUp() {
   CreateMaterialUniformBuffer();
   CreateTextureResources();
   CreateCubemapResources();
+  CreateSkyboxUniformBuffer();
   WriteDescriptorSets();
 
   CreateFramebuffers();
@@ -124,6 +125,20 @@ void Application::Renderer::LateShutDown() {
     vkDestroyBuffer(device_, buffer_, nullptr);
   for (VkDeviceMemory memory_ : directional_light_uniform_memory_)
     vkFreeMemory(device_, memory_, nullptr);
+  directional_light_uniform_buffers_.clear();
+  directional_light_uniform_memory_.clear();
+  for (VkBuffer buffer_ : material_uniform_buffers_)
+    vkDestroyBuffer(device_, buffer_, nullptr);
+  for (VkDeviceMemory memory_ : material_uniform_memory_)
+    vkFreeMemory(device_, memory_, nullptr);
+  material_uniform_buffers_.clear();
+  material_uniform_memory_.clear();
+  for (VkBuffer buffer_ : skybox_uniform_buffers_)
+    vkDestroyBuffer(device_, buffer_, nullptr);
+  for (VkDeviceMemory memory_ : skybox_uniform_memory_)
+    vkFreeMemory(device_, memory_, nullptr);
+  skybox_uniform_buffers_.clear();
+  skybox_uniform_memory_.clear();
 
   // Destroy fixed size pipelines
   vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);
