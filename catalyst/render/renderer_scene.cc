@@ -413,6 +413,10 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
       scene_->skyboxes_[0]->specular_cubemap_id_;
   details.skybox_uniform.diffuse_cubemap_id =
       scene_->skyboxes_[0]->diffuse_cubemap_id_;
+  details.skybox_uniform.specular_intensity =
+      scene_->skyboxes_[0]->specular_intensity_;
+  details.skybox_uniform.diffuse_intensity =
+      scene_->skyboxes_[0]->diffuse_intensity_;
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
   DrawSceneShadowmaps(cmd, frame_i, details);

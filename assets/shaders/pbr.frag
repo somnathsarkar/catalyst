@@ -24,7 +24,8 @@ struct Material{
 struct Skybox{
     int specular_cubemap_id;
     int diffuse_cubemap_id;
-    ivec2 _pad;
+    float specular_intensity;
+    float diffuse_intensity;
 };
 
 layout(binding = 0, set = 0, std140) uniform directional_light_uniform_block{
@@ -86,11 +87,10 @@ void main() {
 
     // Environmental IBL
     // Specular component
-    float k_a = 0.1f;
-    float roughness_mip = (roughness*MAX_MIP_LEVEL);
-    currentColor += vec3(k_a*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
+    float roughness_mip = (roughness*11.0f);
+    currentColor += vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
     // Diffuse component
-    currentColor += albedo*vec3(k_a*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
+    currentColor += albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
 
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){
         DirectionalLight light = directional_light_uniform.lights[light_i];

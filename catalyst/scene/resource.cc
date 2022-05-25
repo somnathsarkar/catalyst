@@ -96,7 +96,7 @@ Cubemap::Cubemap(Scene* scene, const std::string& name)
 Skybox::Skybox(Scene* scene, const std::string& name)
     : Resource(scene, name, ResourceType::kSkybox),
       specular_cubemap_id_(-1),
-      diffuse_cubemap_id_(-1) {
+      diffuse_cubemap_id_(-1), specular_intensity_(0.1f), diffuse_intensity_(0.1f) {
   std::function<std::vector<std::string>()> cubemap_name_getter =
       [this]() -> std::vector<std::string> {
     std::vector<std::string> result;
@@ -113,5 +113,11 @@ Skybox::Skybox(Scene* scene, const std::string& name)
       "Diffuse Cubemap", Property::CreateIntegerGetter(&diffuse_cubemap_id_),
       Property::CreateIntegerSetter(&diffuse_cubemap_id_), cubemap_name_getter,
       NamedIndexPropertyStyle::kAllowNone);
+  property_manager_.AddFloatProperty(
+      "Specular Intensity", Property::CreateFloatGetter(&specular_intensity_),
+      Property::CreateFloatSetter(&specular_intensity_));
+  property_manager_.AddFloatProperty(
+      "Diffuse Intensity", Property::CreateFloatGetter(&diffuse_intensity_),
+      Property::CreateFloatSetter(&diffuse_intensity_));
 }
 }  // namespace catalyst

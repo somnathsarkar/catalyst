@@ -72,6 +72,8 @@ class Skybox : public Resource {
  public:
   int specular_cubemap_id_;
   int diffuse_cubemap_id_;
+  float specular_intensity_;
+  float diffuse_intensity_;
   Skybox(Scene* scene, const std::string& name);
 };
 }  // namespace catalyst

@@ -73,7 +73,8 @@ class Application :: Renderer {
   struct SkyboxUniform {
     int specular_cubemap_id;
     int diffuse_cubemap_id;
-    int _pad[2];
+    float specular_intensity;
+    float diffuse_intensity;
   };
   struct SceneDrawDetails {
     PushConstantData push_constants;
