@@ -450,7 +450,7 @@ void Application::Renderer::CreateSamplers() {
   sampler_ci.anisotropyEnable = VK_TRUE;
   sampler_ci.maxAnisotropy = 1.0f;
   sampler_ci.minLod = 0.0f;
-  sampler_ci.maxLod = 1.0f;
+  sampler_ci.maxLod = static_cast<float>(Scene::kMaxTextureMipLevels);
   sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
   sampler_ci.unnormalizedCoordinates = VK_FALSE;
   create_result =

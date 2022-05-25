@@ -1,6 +1,7 @@
 #version 450
 
 #define M_PI 3.1415926535897932384626433832795
+#define MAX_MIP_LEVEL 12.0f
 
 struct DirectionalLight{
     mat4 world_to_light_transform;
@@ -59,14 +60,19 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     Material material = material_uniform.materials[materialId];
+    int specular_environment_map = skybox_uniform.skybox.specular_cubemap_id;
+    int diffuse_environemnt_map = skybox_uniform.skybox.diffuse_cubemap_id;
+
     vec3 v = normalize(worldCamera);
     vec3 N = normalize(worldNormal);
     vec3 T = normalize(worldTangent);
     vec3 B = normalize(worldTangent);
+
+    vec3 currentColor = vec3(0.0f);
+
     vec3 n = N;
     if(material.normal_texture_id>-1)
         n = mat3(T,B,N)*texture(textures[material.normal_texture_id],texCoords).rgb;
-    vec3 currentColor = vec3(0.0f);
     vec3 albedo = material.color.rgb;
     if(material.albedo_texture_id>-1)
         albedo = texture(textures[material.albedo_texture_id],texCoords).rgb;
@@ -76,6 +82,16 @@ void main() {
     float roughness = material.roughness;
     if(material.roughness_texture_id>-1)
         roughness = texture(textures[material.roughness_texture_id],texCoords).r;
+    vec3 R = normalize(reflect(-v,n));
+
+    // Environmental IBL
+    // Specular component
+    float k_a = 0.1f;
+    float roughness_mip = (roughness*MAX_MIP_LEVEL);
+    currentColor += vec3(k_a*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
+    // Diffuse component
+    currentColor += albedo*vec3(k_a*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
+
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){
         DirectionalLight light = directional_light_uniform.lights[light_i];
         mat4 light_to_world_transform = inverse(light.world_to_light_transform);
