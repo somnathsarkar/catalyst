@@ -128,6 +128,7 @@ class Application :: Renderer {
   VkPipeline debugdraw_pipeline_;
   VkPipeline debugdraw_lines_pipeline_;
   VkPipeline depthmap_pipeline_;
+  VkPipeline skybox_pipeline_;
   VkRenderPass render_pass_;
   VkRenderPass depthmap_render_pass_;
   std::vector<VkFramebuffer> framebuffers_;
@@ -166,6 +167,8 @@ class Application :: Renderer {
   std::vector<VkImageView> cubemap_image_views_;
   std::vector<VkDeviceMemory> skybox_uniform_memory_;
   std::vector<VkBuffer> skybox_uniform_buffers_;
+  VkDeviceMemory skybox_vertex_memory_;
+  VkBuffer skybox_vertex_buffer_;
 
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
@@ -228,6 +231,9 @@ class Application :: Renderer {
   void CreateDepthmapPipeline();
   void BeginDepthmapRenderPass(VkCommandBuffer& cmd, VkFramebuffer& framebuffer);
 
+  // Rendering Pipeline - Skybox
+  void CreateSkyboxPipeline();
+
   // Needed for each window, can be in rendermanager_surface.cc
   void CreateCommandPool();
   void CreateCommandBuffers();
@@ -247,7 +253,7 @@ class Application :: Renderer {
   void CreateMaterialUniformBuffer();
   void CreateTextureResources();
   void CreateCubemapResources();
-  void CreateSkyboxUniformBuffer();
+  void CreateSkyboxResources();
 
   // Scene Resources
   void LoadSceneResources();

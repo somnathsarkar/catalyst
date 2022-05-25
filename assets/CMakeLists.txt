@@ -70,6 +70,7 @@ add_shader_pair("phong")
 add_shader_pair("pbr")
 add_shader_pair("debugdraw")
 add_shader_pair("depthmap")
+add_shader_pair("skybox")
 
 add_model("bun_zipper.obj")
 add_model("teapot.obj")

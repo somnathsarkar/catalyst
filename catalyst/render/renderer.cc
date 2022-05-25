@@ -50,7 +50,7 @@ void Application::Renderer::StartUp() {
   CreateMaterialUniformBuffer();
   CreateTextureResources();
   CreateCubemapResources();
-  CreateSkyboxUniformBuffer();
+  CreateSkyboxResources();
   WriteDescriptorSets();
 
   CreateFramebuffers();
@@ -139,6 +139,8 @@ void Application::Renderer::LateShutDown() {
     vkFreeMemory(device_, memory_, nullptr);
   skybox_uniform_buffers_.clear();
   skybox_uniform_memory_.clear();
+  vkDestroyBuffer(device_, skybox_vertex_buffer_, nullptr);
+  vkFreeMemory(device_, skybox_vertex_memory_, nullptr);
 
   // Destroy fixed size pipelines
   vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);

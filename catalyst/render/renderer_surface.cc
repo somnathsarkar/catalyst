@@ -298,7 +298,7 @@ void Application::Renderer::CreateCubemapResources() {
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, VK_ACCESS_SHADER_READ_BIT);
   }
 }
-void Application::Renderer::CreateSkyboxUniformBuffer() {
+void Application::Renderer::CreateSkyboxResources() {
   skybox_uniform_buffers_.resize(frame_count_);
   skybox_uniform_memory_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
@@ -308,6 +308,34 @@ void Application::Renderer::CreateSkyboxUniformBuffer() {
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
   }
+  float skybox_vertices[] = {-1.0f, -1.0f, 1.0f, -1.0f, 1.0f,  1.0f,
+                             1.0f,  1.0f,  1.0f, 1.0f,  1.0f,  1.0f,
+                             1.0f,  -1.0f, 1.0f, -1.0f, -1.0f, 1.0f};
+  size_t skybox_vertex_size = sizeof(skybox_vertices);
+  CreateBuffer(
+      skybox_vertex_buffer_, skybox_vertex_memory_, skybox_vertex_size,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  VkBuffer staging_buffer;
+  VkDeviceMemory staging_memory;
+  CreateBuffer(staging_buffer, staging_memory, skybox_vertex_size,
+               VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  void* staging_data = nullptr;
+  vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &staging_data);
+  memcpy(staging_data, skybox_vertices, skybox_vertex_size);
+  vkUnmapMemory(device_, staging_memory);
+  VkCommandBuffer cmd;
+  BeginSingleUseCommandBuffer(cmd);
+  VkBufferCopy buffer_cp{};
+  buffer_cp.size = skybox_vertex_size;
+  buffer_cp.srcOffset = 0;
+  buffer_cp.dstOffset = 0;
+  vkCmdCopyBuffer(cmd, staging_buffer, skybox_vertex_buffer_, 1, &buffer_cp);
+  EndSingleUseCommandBuffer(cmd);
+  vkDestroyBuffer(device_, staging_buffer, nullptr);
+  vkFreeMemory(device_, staging_memory, nullptr);
 }
 void Application::Renderer::DestroySwapchain() {
   vkDeviceWaitIdle(device_);
@@ -321,6 +349,7 @@ void Application::Renderer::DestroySwapchain() {
   vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_lines_pipeline_, nullptr);
+  vkDestroyPipeline(device_, skybox_pipeline_, nullptr);
   vkDestroyRenderPass(device_, render_pass_, nullptr);
 
   // Destroy resources
@@ -360,6 +389,7 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateGraphicsPipeline();
   CreateDebugDrawPipeline();
   CreateDebugDrawLinesPipeline();
+  CreateSkyboxPipeline();
   if (include_fixed_size) CreateDepthmapPipeline();
 }
 void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {

@@ -430,7 +430,6 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
                           graphics_pipeline_layout_, 0, 1,
                           &descriptor_sets_[frame_i], 0, nullptr);
   BeginGraphicsRenderPass(cmd, image_i);
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
 
   void* uniform_data;
   vkMapMemory(device_, directional_light_uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
@@ -457,6 +456,14 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
               &skybox_uniform_data);
   memcpy(skybox_uniform_data, &details.skybox_uniform, sizeof(SkyboxUniform));
   vkUnmapMemory(device_, skybox_uniform_memory_[frame_i]);
+
+  vkCmdBindVertexBuffers(cmd, 0, 1, &skybox_vertex_buffer_, vertex_offsets);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline_);
+
+  vkCmdDraw(cmd, 6, 1, 0, 0);
+
+  vkCmdBindVertexBuffers(cmd, 0, 1, &vertex_buffer_, vertex_offsets);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline_);
 
   DrawSceneMeshes(cmd, graphics_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
 
