@@ -87,7 +87,7 @@ void main() {
 
     // Environmental IBL
     // Specular component
-    float roughness_mip = (roughness*11.0f);
+    float roughness_mip = (roughness*MAX_MIP_LEVEL);
     currentColor += vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
     // Diffuse component
     currentColor += albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
@@ -104,6 +104,10 @@ void main() {
         }
         vec3 l = normalize(world_light);
         vec3 h = normalize((l+v));
+        // Check if face is away from light
+        if(dot(l,n)<=0){
+            continue;
+        }
         // Height Correlated Smith G2 with GGX NDF
         // G_2/4|n.l||n.v|
         float mu_i = max(dot(n,l),0.0f);
