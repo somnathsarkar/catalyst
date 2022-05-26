@@ -432,6 +432,8 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
                      sizeof(details.push_constants.view_to_clip_transform),
                      &details.push_constants.view_to_clip_transform);
 
+  DrawSceneZPrePass(cmd, image_i, details);
+
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           graphics_pipeline_layout_, 0, 1,
                           &descriptor_sets_[frame_i], 0, nullptr);
@@ -587,26 +589,35 @@ void Application::Renderer::DebugDrawAabb(uint32_t frame_i,
 void Application::Renderer::DrawSceneShadowmaps(VkCommandBuffer& cmd,
                                                 uint32_t swapchain_image_i,
                                                 SceneDrawDetails& details) {
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, depthmap_pipeline_);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmap_pipeline_);
   for (uint32_t shadow_i = 0;
        shadow_i < details.directional_light_uniform.light_count_; shadow_i++) {
     DirectionalLight light =
         details.directional_light_uniform.lights_[shadow_i];
-    vkCmdPushConstants(cmd, depthmap_pipeline_layout_,
+    vkCmdPushConstants(cmd, shadowmap_pipeline_layout_,
                        VK_SHADER_STAGE_VERTEX_BIT,
                        offsetof(PushConstantData, world_to_view_transform),
                        sizeof(light.world_to_light_transform),
                        &light.world_to_light_transform);
     vkCmdPushConstants(
-        cmd, depthmap_pipeline_layout_,
+        cmd, shadowmap_pipeline_layout_,
                        VK_SHADER_STAGE_VERTEX_BIT,
                        offsetof(PushConstantData, view_to_clip_transform),
                        sizeof(light.light_to_clip_transform),
                        &light.light_to_clip_transform);
-    BeginDepthmapRenderPass(cmd, shadowmap_framebuffers_[swapchain_image_i][shadow_i]);
-    DrawSceneMeshes(cmd, depthmap_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
+    BeginShadowmapRenderPass(cmd, shadowmap_framebuffers_[swapchain_image_i][shadow_i]);
+    DrawSceneMeshes(cmd, shadowmap_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
     vkCmdEndRenderPass(cmd);
   }
+}
+void Application::Renderer::DrawSceneZPrePass(VkCommandBuffer& cmd,
+                                              uint32_t swapchain_image_i,
+                                              SceneDrawDetails& details) {
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, depthmap_pipeline_);
+  BeginDepthmapRenderPass(cmd, swapchain_image_i);
+  DrawSceneMeshes(cmd, depthmap_pipeline_layout_, details, scene_->root_,
+                  glm::mat4(1.0f));
+  vkCmdEndRenderPass(cmd);
 }
 void Application::Renderer::DrawScenePrePass(VkCommandBuffer& cmd,
                                              SceneDrawDetails& details,

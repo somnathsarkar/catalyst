@@ -390,14 +390,17 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateDebugDrawPipeline();
   CreateDebugDrawLinesPipeline();
   CreateSkyboxPipeline();
-  if (include_fixed_size) CreateDepthmapPipeline();
+  CreateDepthmapPipeline();
+  if (include_fixed_size) CreateShadowmapPipeline();
 }
 void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
   CreateGraphicsRenderPass();
-  if(include_fixed_size) CreateDepthmapRenderPass();
+  CreateDepthmapRenderPass();
+  if(include_fixed_size) CreateShadowmapRenderPass();
 }
 void Application::Renderer::CreateFramebuffers(bool include_fixed_size) {
   CreateGraphicsFramebuffers();
+  CreateDepthmapFramebuffers();
   if (include_fixed_size) CreateDirectionalShadowmapFramebuffers();
 }
 VkShaderModule Application::Renderer::CreateShaderModule(
@@ -517,11 +520,12 @@ void Application::Renderer::CreateGraphicsRenderPass() {
   VkAttachmentDescription depth_attachment{};
   depth_attachment.format = depth_format_;
   depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
   depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depth_attachment.initialLayout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
   depth_attachment.finalLayout =
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -682,8 +686,8 @@ void Application::Renderer::CreateGraphicsPipeline() {
   depth_stencil_state.sType =
       VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
   depth_stencil_state.depthTestEnable = VK_TRUE;
-  depth_stencil_state.depthWriteEnable = VK_TRUE;
-  depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS;
+  depth_stencil_state.depthWriteEnable = VK_FALSE;
+  depth_stencil_state.depthCompareOp = VK_COMPARE_OP_EQUAL;
   depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
   depth_stencil_state.stencilTestEnable = VK_FALSE;
 

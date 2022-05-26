@@ -1,62 +1,61 @@
+// Rendering pipeline resources for shadowmaps
 #include <catalyst/render/renderer.h>
 
 namespace catalyst {
-void Application::Renderer::CreateDepthmapRenderPass() {
-    VkAttachmentDescription depth_attachment{};
-    depth_attachment.flags = 0;
-    depth_attachment.format = depth_format_;
-    depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depth_attachment.finalLayout =
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+void Application::Renderer::CreateShadowmapRenderPass() {
+  VkAttachmentDescription depth_attachment{};
+  depth_attachment.flags = 0;
+  depth_attachment.format = depth_format_;
+  depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+  depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depth_attachment.finalLayout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
-    VkAttachmentReference depth_ref{};
-    depth_ref.attachment = 0;
-    depth_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  VkAttachmentReference depth_ref{};
+  depth_ref.attachment = 0;
+  depth_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription subpass{};
-    subpass.flags = 0;
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.inputAttachmentCount = 0;
-    subpass.pInputAttachments = nullptr;
-    subpass.colorAttachmentCount = 0;
-    subpass.pColorAttachments = nullptr;
-    subpass.pResolveAttachments = nullptr;
-    subpass.pDepthStencilAttachment = &depth_ref;
-    subpass.preserveAttachmentCount = 0;
-    subpass.pPreserveAttachments = nullptr;
+  VkSubpassDescription subpass{};
+  subpass.flags = 0;
+  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpass.inputAttachmentCount = 0;
+  subpass.pInputAttachments = nullptr;
+  subpass.colorAttachmentCount = 0;
+  subpass.pColorAttachments = nullptr;
+  subpass.pResolveAttachments = nullptr;
+  subpass.pDepthStencilAttachment = &depth_ref;
+  subpass.preserveAttachmentCount = 0;
+  subpass.pPreserveAttachments = nullptr;
 
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = 0;
-    dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+  VkSubpassDependency dependency{};
+  dependency.srcSubpass = 0;
+  dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+  dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+  dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+  dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-    VkRenderPassCreateInfo render_pass_ci{};
-    render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    render_pass_ci.pNext = nullptr;
-    render_pass_ci.flags = 0;
-    render_pass_ci.attachmentCount = 1;
-    render_pass_ci.pAttachments = &depth_attachment;
-    render_pass_ci.subpassCount = 1;
-    render_pass_ci.pSubpasses = &subpass;
-    render_pass_ci.dependencyCount = 1;
-    render_pass_ci.pDependencies = &dependency;
-    VkResult create_result = vkCreateRenderPass(
-        device_, &render_pass_ci, nullptr, &depthmap_render_pass_);
-    ASSERT(create_result == VK_SUCCESS,
-           "Could not create depthmap render pass!");
+  VkRenderPassCreateInfo render_pass_ci{};
+  render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  render_pass_ci.pNext = nullptr;
+  render_pass_ci.flags = 0;
+  render_pass_ci.attachmentCount = 1;
+  render_pass_ci.pAttachments = &depth_attachment;
+  render_pass_ci.subpassCount = 1;
+  render_pass_ci.pSubpasses = &subpass;
+  render_pass_ci.dependencyCount = 1;
+  render_pass_ci.pDependencies = &dependency;
+  VkResult create_result = vkCreateRenderPass(device_, &render_pass_ci, nullptr,
+                                              &shadowmap_render_pass_);
+  ASSERT(create_result == VK_SUCCESS, "Could not create shadowmap render pass!");
 }
-
-void Application::Renderer::CreateDepthmapPipeline() {
+void Application::Renderer::CreateShadowmapPipeline() {
   const std::vector<char> vert_shader_code =
       ReadFile("../assets/shaders/depthmap.vert.spv");
   const std::vector<char> frag_shader_code =
@@ -144,15 +143,14 @@ void Application::Renderer::CreateDepthmapPipeline() {
   VkViewport viewport{};
   viewport.x = 0.0f;
   viewport.y = 0.0f;
-  viewport.width = swapchain_extent_.width;
-  viewport.height = swapchain_extent_.height;
+  viewport.width = (float)Scene::kMaxShadowmapResolution;
+  viewport.height = (float)Scene::kMaxShadowmapResolution;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
-  scissor.extent.width = swapchain_extent_.width;
-  scissor.extent.height = swapchain_extent_.height;
+  scissor.extent.height = scissor.extent.width = Scene::kMaxShadowmapResolution;
 
   VkPipelineViewportStateCreateInfo viewport_state{};
   viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -211,16 +209,16 @@ void Application::Renderer::CreateDepthmapPipeline() {
   vertex_push.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
   VkPipelineLayoutCreateInfo layout_ci{};
-  layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  layout_ci.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   layout_ci.setLayoutCount = 0;
   layout_ci.pSetLayouts = nullptr;
   layout_ci.pushConstantRangeCount = 1;
   layout_ci.pPushConstantRanges = &vertex_push;
 
   VkResult create_result = vkCreatePipelineLayout(device_, &layout_ci, nullptr,
-                                                  &depthmap_pipeline_layout_);
-  ASSERT(create_result == VK_SUCCESS,
-         "Failed to create depthmap pipeline layout!");
+                                                  &shadowmap_pipeline_layout_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create shadowmap pipeline layout!");
 
   VkGraphicsPipelineCreateInfo pipeline_ci{};
   pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -233,43 +231,44 @@ void Application::Renderer::CreateDepthmapPipeline() {
   pipeline_ci.pMultisampleState = &multisample_state;
   pipeline_ci.pDepthStencilState = &depth_stencil_state;
   pipeline_ci.pColorBlendState = &color_blend_state;
-  pipeline_ci.layout = depthmap_pipeline_layout_;
-  pipeline_ci.renderPass = depthmap_render_pass_;
+  pipeline_ci.layout = shadowmap_pipeline_layout_;
+  pipeline_ci.renderPass = shadowmap_render_pass_;
   pipeline_ci.subpass = 0;
   pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 
   create_result = vkCreateGraphicsPipelines(
-      device_, pipeline_cache_, 1, &pipeline_ci, nullptr, &depthmap_pipeline_);
-  ASSERT(create_result == VK_SUCCESS, "Failed to create depthmap pipeline!");
+      device_, pipeline_cache_, 1, &pipeline_ci, nullptr, &shadowmap_pipeline_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create shadowmap pipeline!");
 
   vkDestroyShaderModule(device_, vert_shader, nullptr);
   vkDestroyShaderModule(device_, frag_shader, nullptr);
 }
-
-void Application::Renderer::CreateDepthmapFramebuffers() {
-  depthmap_framebuffers_.resize(frame_count_);
-  VkFramebufferCreateInfo framebuffer_ci{};
+void Application::Renderer::CreateDirectionalShadowmapFramebuffers() {
+  shadowmap_framebuffers_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
-    VkFramebufferCreateInfo framebuffer_ci{};
-    framebuffer_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebuffer_ci.pNext = nullptr;
-    framebuffer_ci.flags = 0;
-    framebuffer_ci.renderPass = depthmap_render_pass_;
-    framebuffer_ci.attachmentCount = 1;
-    framebuffer_ci.pAttachments = &depth_image_views_[frame_i];
-    framebuffer_ci.width = swapchain_extent_.width;
-    framebuffer_ci.height = swapchain_extent_.height;
-    framebuffer_ci.layers = 1;
-    VkResult create_result =
-        vkCreateFramebuffer(device_, &framebuffer_ci, nullptr,
-                            &depthmap_framebuffers_[frame_i]);
-    ASSERT(create_result == VK_SUCCESS,
-           "Could not create depthmap framebuffer!");
+    shadowmap_framebuffers_[frame_i].resize(Scene::kMaxDirectionalLights);
+    for (uint32_t shadow_i = 0; shadow_i < Scene::kMaxDirectionalLights;
+         shadow_i++) {
+      VkFramebufferCreateInfo framebuffer_ci{};
+      framebuffer_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+      framebuffer_ci.pNext = nullptr;
+      framebuffer_ci.flags = 0;
+      framebuffer_ci.renderPass = shadowmap_render_pass_;
+      framebuffer_ci.attachmentCount = 1;
+      framebuffer_ci.pAttachments = &shadowmap_image_views_[frame_i][shadow_i];
+      framebuffer_ci.width = Scene::kMaxShadowmapResolution;
+      framebuffer_ci.height = Scene::kMaxShadowmapResolution;
+      framebuffer_ci.layers = 1;
+      VkResult create_result =
+          vkCreateFramebuffer(device_, &framebuffer_ci, nullptr,
+                              &shadowmap_framebuffers_[frame_i][shadow_i]);
+      ASSERT(create_result == VK_SUCCESS,
+             "Could not create shadowmap framebuffer!");
+    }
   }
 }
-
-void Application::Renderer::BeginDepthmapRenderPass(VkCommandBuffer& cmd,
-                                                    uint32_t frame_i) {
+void Application::Renderer::BeginShadowmapRenderPass(
+    VkCommandBuffer& cmd, VkFramebuffer& framebuffer) {
   VkClearValue depth_clear;
   depth_clear.depthStencil.depth = 1.0f;
   depth_clear.depthStencil.stencil = 0;
@@ -277,14 +276,14 @@ void Application::Renderer::BeginDepthmapRenderPass(VkCommandBuffer& cmd,
   VkRenderPassBeginInfo render_pass_bi{};
   render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   render_pass_bi.pNext = nullptr;
-  render_pass_bi.renderPass = depthmap_render_pass_;
-  render_pass_bi.framebuffer = depthmap_framebuffers_[frame_i];
-  render_pass_bi.renderArea.extent = swapchain_extent_;
+  render_pass_bi.renderPass = shadowmap_render_pass_;
+  render_pass_bi.framebuffer = framebuffer;
+  render_pass_bi.renderArea.extent.width = Scene::kMaxShadowmapResolution;
+  render_pass_bi.renderArea.extent.height = Scene::kMaxShadowmapResolution;
   render_pass_bi.renderArea.offset.x = 0;
   render_pass_bi.renderArea.offset.y = 0;
   render_pass_bi.clearValueCount = 1;
   render_pass_bi.pClearValues = clear_values;
   vkCmdBeginRenderPass(cmd, &render_pass_bi, VK_SUBPASS_CONTENTS_INLINE);
 }
-
 }
