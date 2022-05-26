@@ -1,9 +1,8 @@
-// Utilities for depth-only render passes.
-// Examples: Z-prepass, shadow map generation, etc
+// Rendering pipeline resources for shadowmaps
 #include <catalyst/render/renderer.h>
 
 namespace catalyst {
-void Application::Renderer::CreateDepthmapRenderPass() {
+void Application::Renderer::CreateShadowmapRenderPass() {
   VkAttachmentDescription depth_attachment{};
   depth_attachment.flags = 0;
   depth_attachment.format = depth_format_;
@@ -53,10 +52,10 @@ void Application::Renderer::CreateDepthmapRenderPass() {
   render_pass_ci.dependencyCount = 1;
   render_pass_ci.pDependencies = &dependency;
   VkResult create_result = vkCreateRenderPass(device_, &render_pass_ci, nullptr,
-                                              &depthmap_render_pass_);
-  ASSERT(create_result == VK_SUCCESS, "Could not create depthmap render pass!");
+                                              &shadowmap_render_pass_);
+  ASSERT(create_result == VK_SUCCESS, "Could not create shadowmap render pass!");
 }
-void Application::Renderer::CreateDepthmapPipeline() {
+void Application::Renderer::CreateShadowmapPipeline() {
   const std::vector<char> vert_shader_code =
       ReadFile("../assets/shaders/depthmap.vert.spv");
   const std::vector<char> frag_shader_code =
@@ -218,8 +217,8 @@ void Application::Renderer::CreateDepthmapPipeline() {
   layout_ci.pPushConstantRanges = &vertex_push;
 
   VkResult create_result = vkCreatePipelineLayout(device_, &layout_ci, nullptr,
-                                                  &depthmap_pipeline_layout_);
-  ASSERT(create_result == VK_SUCCESS, "Failed to create depthmap pipeline layout!");
+                                                  &shadowmap_pipeline_layout_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create shadowmap pipeline layout!");
 
   VkGraphicsPipelineCreateInfo pipeline_ci{};
   pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -232,14 +231,14 @@ void Application::Renderer::CreateDepthmapPipeline() {
   pipeline_ci.pMultisampleState = &multisample_state;
   pipeline_ci.pDepthStencilState = &depth_stencil_state;
   pipeline_ci.pColorBlendState = &color_blend_state;
-  pipeline_ci.layout = depthmap_pipeline_layout_;
-  pipeline_ci.renderPass = depthmap_render_pass_;
+  pipeline_ci.layout = shadowmap_pipeline_layout_;
+  pipeline_ci.renderPass = shadowmap_render_pass_;
   pipeline_ci.subpass = 0;
   pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 
   create_result = vkCreateGraphicsPipelines(
-      device_, pipeline_cache_, 1, &pipeline_ci, nullptr, &depthmap_pipeline_);
-  ASSERT(create_result == VK_SUCCESS, "Failed to create depthmap pipeline!");
+      device_, pipeline_cache_, 1, &pipeline_ci, nullptr, &shadowmap_pipeline_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create shadowmap pipeline!");
 
   vkDestroyShaderModule(device_, vert_shader, nullptr);
   vkDestroyShaderModule(device_, frag_shader, nullptr);
@@ -254,7 +253,7 @@ void Application::Renderer::CreateDirectionalShadowmapFramebuffers() {
       framebuffer_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
       framebuffer_ci.pNext = nullptr;
       framebuffer_ci.flags = 0;
-      framebuffer_ci.renderPass = depthmap_render_pass_;
+      framebuffer_ci.renderPass = shadowmap_render_pass_;
       framebuffer_ci.attachmentCount = 1;
       framebuffer_ci.pAttachments = &shadowmap_image_views_[frame_i][shadow_i];
       framebuffer_ci.width = Scene::kMaxShadowmapResolution;
@@ -268,7 +267,7 @@ void Application::Renderer::CreateDirectionalShadowmapFramebuffers() {
     }
   }
 }
-void Application::Renderer::BeginDepthmapRenderPass(
+void Application::Renderer::BeginShadowmapRenderPass(
     VkCommandBuffer& cmd, VkFramebuffer& framebuffer) {
   VkClearValue depth_clear;
   depth_clear.depthStencil.depth = 1.0f;
@@ -277,7 +276,7 @@ void Application::Renderer::BeginDepthmapRenderPass(
   VkRenderPassBeginInfo render_pass_bi{};
   render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   render_pass_bi.pNext = nullptr;
-  render_pass_bi.renderPass = depthmap_render_pass_;
+  render_pass_bi.renderPass = shadowmap_render_pass_;
   render_pass_bi.framebuffer = framebuffer;
   render_pass_bi.renderArea.extent.width = Scene::kMaxShadowmapResolution;
   render_pass_bi.renderArea.extent.height = Scene::kMaxShadowmapResolution;

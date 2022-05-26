@@ -143,10 +143,10 @@ void Application::Renderer::LateShutDown() {
   vkFreeMemory(device_, skybox_vertex_memory_, nullptr);
 
   // Destroy fixed size pipelines
-  vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);
+  vkDestroyPipeline(device_, shadowmap_pipeline_, nullptr);
 
   // Destroy Render passes
-  vkDestroyRenderPass(device_, depthmap_render_pass_, nullptr);
+  vkDestroyRenderPass(device_, shadowmap_render_pass_, nullptr);
 
   vkFreeCommandBuffers(device_, command_pool_,
                        static_cast<uint32_t>(command_buffers_.size()),

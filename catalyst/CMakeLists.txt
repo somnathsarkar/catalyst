@@ -18,7 +18,7 @@ target_sources(catalyst PRIVATE
 "render/renderer_surface.cc"
 "render/renderer_debugdraw.cc"
 "render/renderer_descriptor.cc"
-"render/renderer_depthmap.cc"
+"render/renderer_shadowmap.cc"
 "render/renderer_utilities.cc"
 "render/renderer_skybox.cc"
 "application/application.h"

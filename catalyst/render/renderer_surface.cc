@@ -390,11 +390,11 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateDebugDrawPipeline();
   CreateDebugDrawLinesPipeline();
   CreateSkyboxPipeline();
-  if (include_fixed_size) CreateDepthmapPipeline();
+  if (include_fixed_size) CreateShadowmapPipeline();
 }
 void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
   CreateGraphicsRenderPass();
-  if(include_fixed_size) CreateDepthmapRenderPass();
+  if(include_fixed_size) CreateShadowmapRenderPass();
 }
 void Application::Renderer::CreateFramebuffers(bool include_fixed_size) {
   CreateGraphicsFramebuffers();

@@ -124,14 +124,14 @@ class Application :: Renderer {
   VkPipelineCache pipeline_cache_;
   VkPipelineLayout graphics_pipeline_layout_;
   VkPipelineLayout debugdraw_pipeline_layout_;
-  VkPipelineLayout depthmap_pipeline_layout_;
+  VkPipelineLayout shadowmap_pipeline_layout_;
   VkPipeline graphics_pipeline_;
   VkPipeline debugdraw_pipeline_;
   VkPipeline debugdraw_lines_pipeline_;
-  VkPipeline depthmap_pipeline_;
+  VkPipeline shadowmap_pipeline_;
   VkPipeline skybox_pipeline_;
   VkRenderPass render_pass_;
-  VkRenderPass depthmap_render_pass_;
+  VkRenderPass shadowmap_render_pass_;
   std::vector<VkFramebuffer> framebuffers_;
   std::vector<std::vector<VkFramebuffer>> shadowmap_framebuffers_;
 
@@ -227,10 +227,10 @@ class Application :: Renderer {
   void CreateDebugDrawPipeline();
   void CreateDebugDrawLinesPipeline();
 
-  // Rendering Pipeline - Depthmaps
-  void CreateDepthmapRenderPass();
-  void CreateDepthmapPipeline();
-  void BeginDepthmapRenderPass(VkCommandBuffer& cmd, VkFramebuffer& framebuffer);
+  // Rendering Pipeline - Shadowmaps
+  void CreateShadowmapRenderPass();
+  void CreateShadowmapPipeline();
+  void BeginShadowmapRenderPass(VkCommandBuffer& cmd, VkFramebuffer& framebuffer);
 
   // Rendering Pipeline - Skybox
   void CreateSkyboxPipeline();
