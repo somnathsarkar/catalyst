@@ -125,15 +125,19 @@ class Application :: Renderer {
   VkPipelineLayout graphics_pipeline_layout_;
   VkPipelineLayout debugdraw_pipeline_layout_;
   VkPipelineLayout shadowmap_pipeline_layout_;
+  VkPipelineLayout depthmap_pipeline_layout_;
   VkPipeline graphics_pipeline_;
   VkPipeline debugdraw_pipeline_;
   VkPipeline debugdraw_lines_pipeline_;
   VkPipeline shadowmap_pipeline_;
   VkPipeline skybox_pipeline_;
+  VkPipeline depthmap_pipeline_;
   VkRenderPass render_pass_;
   VkRenderPass shadowmap_render_pass_;
+  VkRenderPass depthmap_render_pass_;
   std::vector<VkFramebuffer> framebuffers_;
   std::vector<std::vector<VkFramebuffer>> shadowmap_framebuffers_;
+  std::vector<VkFramebuffer> depthmap_framebuffers_;
 
   VkDescriptorSetLayout descriptor_set_layout_;
   VkDescriptorPool descriptor_pool_;
@@ -211,9 +215,6 @@ class Application :: Renderer {
   void CreateRenderPasses(bool include_fixed_size = true);
   void CreateFramebuffers(bool include_fixed_size = true);
 
-  // Framebuffers
-  void CreateDirectionalShadowmapFramebuffers();
-
   // Rendering Pipeline - Graphics
   void CreatePipelineCache();
   void CreateGraphicsPipeline();
@@ -230,7 +231,15 @@ class Application :: Renderer {
   // Rendering Pipeline - Shadowmaps
   void CreateShadowmapRenderPass();
   void CreateShadowmapPipeline();
-  void BeginShadowmapRenderPass(VkCommandBuffer& cmd, VkFramebuffer& framebuffer);
+  void CreateDirectionalShadowmapFramebuffers();
+  void BeginShadowmapRenderPass(VkCommandBuffer& cmd,
+                                VkFramebuffer& framebuffer);
+
+  // Rendering Pipeline - Depthmap
+  void CreateDepthmapRenderPass();
+  void CreateDepthmapPipeline();
+  void CreateDepthmapFramebuffers();
+  void BeginDepthmapRenderPass(VkCommandBuffer& cmd, uint32_t frame_i);
 
   // Rendering Pipeline - Skybox
   void CreateSkyboxPipeline();
@@ -298,6 +307,8 @@ class Application :: Renderer {
   void DebugDrawScene(uint32_t frame_i);
   void DebugDrawAabb(uint32_t frame_i, const Aabb& aabb);
   void DrawSceneShadowmaps(VkCommandBuffer& cmd, uint32_t swapchain_image_i, SceneDrawDetails& details);
+  void DrawSceneZPrePass(VkCommandBuffer& cmd, uint32_t swapchain_image_i,
+                         SceneDrawDetails& details);
 
   // Debug Messenger for Vulkan Validation Layers
   static void PopulateDebugMessengerCreateInfo(

@@ -432,6 +432,8 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
                      sizeof(details.push_constants.view_to_clip_transform),
                      &details.push_constants.view_to_clip_transform);
 
+  DrawSceneZPrePass(cmd, image_i, details);
+
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           graphics_pipeline_layout_, 0, 1,
                           &descriptor_sets_[frame_i], 0, nullptr);
@@ -607,6 +609,15 @@ void Application::Renderer::DrawSceneShadowmaps(VkCommandBuffer& cmd,
     DrawSceneMeshes(cmd, shadowmap_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
     vkCmdEndRenderPass(cmd);
   }
+}
+void Application::Renderer::DrawSceneZPrePass(VkCommandBuffer& cmd,
+                                              uint32_t swapchain_image_i,
+                                              SceneDrawDetails& details) {
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, depthmap_pipeline_);
+  BeginDepthmapRenderPass(cmd, swapchain_image_i);
+  DrawSceneMeshes(cmd, depthmap_pipeline_layout_, details, scene_->root_,
+                  glm::mat4(1.0f));
+  vkCmdEndRenderPass(cmd);
 }
 void Application::Renderer::DrawScenePrePass(VkCommandBuffer& cmd,
                                              SceneDrawDetails& details,
