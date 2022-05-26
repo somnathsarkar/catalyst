@@ -12,7 +12,7 @@ void Application::Renderer::CreateDepthmapRenderPass() {
     depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
     depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depth_attachment.finalLayout =
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference depth_ref{};
     depth_ref.attachment = 0;
@@ -30,16 +30,6 @@ void Application::Renderer::CreateDepthmapRenderPass() {
     subpass.preserveAttachmentCount = 0;
     subpass.pPreserveAttachments = nullptr;
 
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = 0;
-    dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-
     VkRenderPassCreateInfo render_pass_ci{};
     render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     render_pass_ci.pNext = nullptr;
@@ -48,8 +38,8 @@ void Application::Renderer::CreateDepthmapRenderPass() {
     render_pass_ci.pAttachments = &depth_attachment;
     render_pass_ci.subpassCount = 1;
     render_pass_ci.pSubpasses = &subpass;
-    render_pass_ci.dependencyCount = 1;
-    render_pass_ci.pDependencies = &dependency;
+    render_pass_ci.dependencyCount = 0;
+    render_pass_ci.pDependencies = nullptr;
     VkResult create_result = vkCreateRenderPass(
         device_, &render_pass_ci, nullptr, &depthmap_render_pass_);
     ASSERT(create_result == VK_SUCCESS,

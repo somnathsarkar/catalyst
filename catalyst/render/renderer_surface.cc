@@ -341,16 +341,24 @@ void Application::Renderer::DestroySwapchain() {
   vkDeviceWaitIdle(device_);
 
   // Destroy framebuffers
-  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     vkDestroyFramebuffer(device_, framebuffers_[frame_i], nullptr);
+    vkDestroyFramebuffer(device_, depthmap_framebuffers_[frame_i], nullptr);
+  }
   framebuffers_.clear();
+  depthmap_framebuffers_.clear();
 
   // Destroy pipelines and render passes
+  vkDestroyPipelineLayout(device_, graphics_pipeline_layout_, nullptr);
   vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
+  vkDestroyPipelineLayout(device_, debugdraw_pipeline_layout_, nullptr);
   vkDestroyPipeline(device_, debugdraw_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_lines_pipeline_, nullptr);
   vkDestroyPipeline(device_, skybox_pipeline_, nullptr);
+  vkDestroyPipelineLayout(device_, depthmap_pipeline_layout_, nullptr);
+  vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);
   vkDestroyRenderPass(device_, render_pass_, nullptr);
+  vkDestroyRenderPass(device_, depthmap_render_pass_, nullptr);
 
   // Destroy resources
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
@@ -525,7 +533,7 @@ void Application::Renderer::CreateGraphicsRenderPass() {
   depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   depth_attachment.initialLayout =
-      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
   depth_attachment.finalLayout =
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
