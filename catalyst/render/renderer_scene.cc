@@ -143,7 +143,8 @@ void Application::Renderer::LoadTextures() {
     CreateBuffer(staging_buffer, staging_memory, tex_size,
                  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     // Copy texture data to staging buffer
     void* data;
     vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &data);
@@ -263,7 +264,8 @@ void Application::Renderer::LoadCubemaps() {
       CreateBuffer(staging_buffer, staging_memory, tex_size,
                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
       // Copy texture data to staging buffer
       void* data;
       vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &data);
@@ -369,12 +371,12 @@ void Application::Renderer::CreateDirectionalLightUniformBuffer() {
   directional_light_uniform_memory_.resize(num_frames);
   for (uint32_t frame_i = 0;
        frame_i < num_frames; frame_i++) {
-    CreateBuffer(
-        directional_light_uniform_buffers_[frame_i], directional_light_uniform_memory_[frame_i],
-        DirectionalLightUniform::GetSize(),
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+    CreateBuffer(directional_light_uniform_buffers_[frame_i],
+                 directional_light_uniform_memory_[frame_i],
+                 DirectionalLightUniform::GetSize(),
+                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
 }
 void Application::Renderer::UnloadScene() {

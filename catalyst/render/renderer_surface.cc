@@ -247,7 +247,7 @@ void Application::Renderer::CreateMaterialUniformBuffer() {
         material_uniform_buffers_[frame_i], material_uniform_memory_[frame_i],
         MaterialUniformBlock::GetSize(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
 }
 void Application::Renderer::CreateTextureResources() {
@@ -306,7 +306,7 @@ void Application::Renderer::CreateSkyboxResources() {
                  skybox_uniform_memory_[frame_i], sizeof(SkyboxUniform),
                  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                     VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
   float skybox_vertices[] = {-1.0f, -1.0f, 1.0f, -1.0f, 1.0f,  1.0f,
                              1.0f,  1.0f,  1.0f, 1.0f,  1.0f,  1.0f,
