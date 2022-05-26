@@ -1,6 +1,7 @@
 #version 450
 
 #define M_PI 3.1415926535897932384626433832795
+#define MAX_MIP_LEVEL 12.0f
 
 struct DirectionalLight{
     mat4 world_to_light_transform;
@@ -20,6 +21,13 @@ struct Material{
     int _pad;
 };
 
+struct Skybox{
+    int specular_cubemap_id;
+    int diffuse_cubemap_id;
+    float specular_intensity;
+    float diffuse_intensity;
+};
+
 layout(binding = 0, set = 0, std140) uniform directional_light_uniform_block{
     DirectionalLight lights[16];
     int num_lights;
@@ -34,6 +42,12 @@ layout(binding = 2, set = 0, std140) uniform material_uniform_block{
 
 layout(binding = 3) uniform sampler2D textures[16];
 
+layout(binding = 4) uniform samplerCube cubemaps[2];
+
+layout(binding = 5) uniform skybox_uniform_block{
+    Skybox skybox;
+}skybox_uniform;
+
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;
 layout(location = 2) in vec3 worldTangent;
@@ -47,14 +61,19 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     Material material = material_uniform.materials[materialId];
+    int specular_environment_map = skybox_uniform.skybox.specular_cubemap_id;
+    int diffuse_environemnt_map = skybox_uniform.skybox.diffuse_cubemap_id;
+
     vec3 v = normalize(worldCamera);
     vec3 N = normalize(worldNormal);
     vec3 T = normalize(worldTangent);
     vec3 B = normalize(worldTangent);
+
+    vec3 currentColor = vec3(0.0f);
+
     vec3 n = N;
     if(material.normal_texture_id>-1)
         n = mat3(T,B,N)*texture(textures[material.normal_texture_id],texCoords).rgb;
-    vec3 currentColor = vec3(0.0f);
     vec3 albedo = material.color.rgb;
     if(material.albedo_texture_id>-1)
         albedo = texture(textures[material.albedo_texture_id],texCoords).rgb;
@@ -64,6 +83,15 @@ void main() {
     float roughness = material.roughness;
     if(material.roughness_texture_id>-1)
         roughness = texture(textures[material.roughness_texture_id],texCoords).r;
+    vec3 R = normalize(reflect(-v,n));
+
+    // Environmental IBL
+    // Specular component
+    float roughness_mip = (roughness*MAX_MIP_LEVEL);
+    currentColor += vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
+    // Diffuse component
+    currentColor += albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
+
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){
         DirectionalLight light = directional_light_uniform.lights[light_i];
         mat4 light_to_world_transform = inverse(light.world_to_light_transform);
@@ -76,6 +104,10 @@ void main() {
         }
         vec3 l = normalize(world_light);
         vec3 h = normalize((l+v));
+        // Check if face is away from light
+        if(dot(l,n)<=0){
+            continue;
+        }
         // Height Correlated Smith G2 with GGX NDF
         // G_2/4|n.l||n.v|
         float mu_i = max(dot(n,l),0.0f);

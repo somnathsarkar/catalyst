@@ -12,8 +12,7 @@ Material::Material(Scene* scene, const std::string& name)
       normal_texture_id_(-1),
       roughness_(0.0f),
       roughness_texture_id_(-1),
-      reflectance_(1.0f)
-{
+      reflectance_(1.0f) {
   std::function<glm::vec3()> color_getter = [this]() -> glm::vec3 {
     return this->albedo_;
   };
@@ -68,11 +67,14 @@ Material::Material(Scene* scene, const std::string& name)
       Property::CreateIntegerSetter(&metallic_texture_id_), texture_name_getter,
       NamedIndexPropertyStyle::kAllowNone);
 }
-Resource::Resource(Scene* scene, const std::string& name, const ResourceType type)
+Resource::Resource(Scene* scene, const std::string& name,
+                   const ResourceType type)
     : name_(name), type_(type), property_manager_(), scene_(scene) {}
 Mesh::Mesh(Scene* scene, const std::string& name)
     : Resource(scene, name, ResourceType::kMesh), material_id(0) {
-  std::function<int()> mat_getter_ = [this]() -> int { return static_cast<int>(this->material_id); };
+  std::function<int()> mat_getter_ = [this]() -> int {
+    return static_cast<int>(this->material_id);
+  };
   std::function<void(int)> mat_setter_ = [this](int new_value) {
     this->material_id = static_cast<uint32_t>(new_value);
   };
@@ -89,4 +91,33 @@ Mesh::Mesh(Scene* scene, const std::string& name)
 }
 Texture::Texture(Scene* scene, const std::string& name)
     : Resource(scene, name, ResourceType::kTexture) {}
+Cubemap::Cubemap(Scene* scene, const std::string& name)
+    : Resource(scene, name, ResourceType::kCubemap) {}
+Skybox::Skybox(Scene* scene, const std::string& name)
+    : Resource(scene, name, ResourceType::kSkybox),
+      specular_cubemap_id_(-1),
+      diffuse_cubemap_id_(-1), specular_intensity_(0.1f), diffuse_intensity_(0.1f) {
+  std::function<std::vector<std::string>()> cubemap_name_getter =
+      [this]() -> std::vector<std::string> {
+    std::vector<std::string> result;
+    for (const Cubemap* cmap : this->scene_->cubemaps_) {
+      result.push_back(cmap->name_);
+    }
+    return result;
+  };
+  property_manager_.AddNamedIndexProperty(
+      "Specular Cubemap", Property::CreateIntegerGetter(&specular_cubemap_id_),
+      Property::CreateIntegerSetter(&specular_cubemap_id_), cubemap_name_getter,
+      NamedIndexPropertyStyle::kAllowNone);
+  property_manager_.AddNamedIndexProperty(
+      "Diffuse Cubemap", Property::CreateIntegerGetter(&diffuse_cubemap_id_),
+      Property::CreateIntegerSetter(&diffuse_cubemap_id_), cubemap_name_getter,
+      NamedIndexPropertyStyle::kAllowNone);
+  property_manager_.AddFloatProperty(
+      "Specular Intensity", Property::CreateFloatGetter(&specular_intensity_),
+      Property::CreateFloatSetter(&specular_intensity_));
+  property_manager_.AddFloatProperty(
+      "Diffuse Intensity", Property::CreateFloatGetter(&diffuse_intensity_),
+      Property::CreateFloatSetter(&diffuse_intensity_));
+}
 }  // namespace catalyst

@@ -197,11 +197,13 @@ void Application::Renderer::CreateDepthResources() {
     depth_extent.width = swapchain_extent_.width;
     depth_extent.height = swapchain_extent_.height;
     depth_extent.depth = 1;
-    CreateImage(depth_images_[frame_i], depth_memory_[frame_i], depth_format_,
-                depth_extent, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+    CreateImage(depth_images_[frame_i], depth_memory_[frame_i], 0,
+                depth_format_, depth_extent, 1, 1,
+                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     CreateImageView(depth_image_views_[frame_i], depth_images_[frame_i],
-                    depth_format_, VK_IMAGE_ASPECT_DEPTH_BIT);
+                    VK_IMAGE_VIEW_TYPE_2D, depth_format_,
+                    VK_IMAGE_ASPECT_DEPTH_BIT);
   }
 }
 void Application::Renderer::CreateDirectionalShadowmapResources() {
@@ -219,13 +221,14 @@ void Application::Renderer::CreateDirectionalShadowmapResources() {
     for (uint32_t shadowmap_i = 0; shadowmap_i < Scene::kMaxDirectionalLights;
          shadowmap_i++) {
       CreateImage(shadowmap_images_[frame_i][shadowmap_i],
-                  shadowmap_memory_[frame_i][shadowmap_i], depth_format_,
-                  shadowmap_extent, 1,
+                  shadowmap_memory_[frame_i][shadowmap_i], 0, depth_format_,
+                  shadowmap_extent, 1, 1,
                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                       VK_IMAGE_USAGE_SAMPLED_BIT,
                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
       CreateImageView(shadowmap_image_views_[frame_i][shadowmap_i],
-                      shadowmap_images_[frame_i][shadowmap_i], depth_format_,
+                      shadowmap_images_[frame_i][shadowmap_i],
+                      VK_IMAGE_VIEW_TYPE_2D, depth_format_,
                       VK_IMAGE_ASPECT_DEPTH_BIT);
       TransitionImageLayout(
           shadowmap_images_[frame_i][shadowmap_i], VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -256,18 +259,83 @@ void Application::Renderer::CreateTextureResources() {
   tex_extent.height = Scene::kMaxTextureResolution;
   tex_extent.depth = 1;
   for (uint32_t tex_i = 0; tex_i < Scene::kMaxTextures; tex_i++) {
-    CreateImage(texture_images_[tex_i], texture_memory_[tex_i],
-                VK_FORMAT_R8G8B8A8_SRGB, tex_extent, Scene::kMaxTextureMipLevels,
+    CreateImage(texture_images_[tex_i], texture_memory_[tex_i], 0,
+                VK_FORMAT_R8G8B8A8_SRGB, tex_extent,
+                Scene::kMaxTextureMipLevels, 1,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     CreateImageView(texture_image_views_[tex_i], texture_images_[tex_i],
-                    VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+                    VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_SRGB,
+                    VK_IMAGE_ASPECT_COLOR_BIT);
     TransitionImageLayout(
         texture_images_[tex_i], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, VK_ACCESS_SHADER_READ_BIT);
   }
+}
+void Application::Renderer::CreateCubemapResources() {
+  cubemap_images_.resize(Scene::kMaxCubemaps);
+  cubemap_image_views_.resize(Scene::kMaxCubemaps);
+  cubemap_memory_.resize(Scene::kMaxCubemaps);
+  VkExtent3D cubemap_extent;
+  cubemap_extent.height = Scene::kMaxTextureResolution;
+  cubemap_extent.width = Scene::kMaxTextureResolution;
+  cubemap_extent.depth = 1;
+  for (uint32_t cmap_i = 0; cmap_i < Scene::kMaxCubemaps; cmap_i++) {
+    CreateImage(cubemap_images_[cmap_i], cubemap_memory_[cmap_i],
+                VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, VK_FORMAT_R8G8B8A8_SRGB,
+                cubemap_extent, Scene::kMaxTextureMipLevels, 6,
+                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    CreateImageView(cubemap_image_views_[cmap_i], cubemap_images_[cmap_i],
+                    VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_SRGB,
+                    VK_IMAGE_ASPECT_COLOR_BIT);
+    TransitionImageLayout(
+        cubemap_images_[cmap_i], VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, VK_ACCESS_SHADER_READ_BIT);
+  }
+}
+void Application::Renderer::CreateSkyboxResources() {
+  skybox_uniform_buffers_.resize(frame_count_);
+  skybox_uniform_memory_.resize(frame_count_);
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    CreateBuffer(skybox_uniform_buffers_[frame_i],
+                 skybox_uniform_memory_[frame_i], sizeof(SkyboxUniform),
+                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                     VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+  }
+  float skybox_vertices[] = {-1.0f, -1.0f, 1.0f, -1.0f, 1.0f,  1.0f,
+                             1.0f,  1.0f,  1.0f, 1.0f,  1.0f,  1.0f,
+                             1.0f,  -1.0f, 1.0f, -1.0f, -1.0f, 1.0f};
+  size_t skybox_vertex_size = sizeof(skybox_vertices);
+  CreateBuffer(
+      skybox_vertex_buffer_, skybox_vertex_memory_, skybox_vertex_size,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  VkBuffer staging_buffer;
+  VkDeviceMemory staging_memory;
+  CreateBuffer(staging_buffer, staging_memory, skybox_vertex_size,
+               VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  void* staging_data = nullptr;
+  vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &staging_data);
+  memcpy(staging_data, skybox_vertices, skybox_vertex_size);
+  vkUnmapMemory(device_, staging_memory);
+  VkCommandBuffer cmd;
+  BeginSingleUseCommandBuffer(cmd);
+  VkBufferCopy buffer_cp{};
+  buffer_cp.size = skybox_vertex_size;
+  buffer_cp.srcOffset = 0;
+  buffer_cp.dstOffset = 0;
+  vkCmdCopyBuffer(cmd, staging_buffer, skybox_vertex_buffer_, 1, &buffer_cp);
+  EndSingleUseCommandBuffer(cmd);
+  vkDestroyBuffer(device_, staging_buffer, nullptr);
+  vkFreeMemory(device_, staging_memory, nullptr);
 }
 void Application::Renderer::DestroySwapchain() {
   vkDeviceWaitIdle(device_);
@@ -281,6 +349,7 @@ void Application::Renderer::DestroySwapchain() {
   vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_pipeline_, nullptr);
   vkDestroyPipeline(device_, debugdraw_lines_pipeline_, nullptr);
+  vkDestroyPipeline(device_, skybox_pipeline_, nullptr);
   vkDestroyRenderPass(device_, render_pass_, nullptr);
 
   // Destroy resources
@@ -320,6 +389,7 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateGraphicsPipeline();
   CreateDebugDrawPipeline();
   CreateDebugDrawLinesPipeline();
+  CreateSkyboxPipeline();
   if (include_fixed_size) CreateDepthmapPipeline();
 }
 void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
@@ -380,7 +450,7 @@ void Application::Renderer::CreateSamplers() {
   sampler_ci.anisotropyEnable = VK_TRUE;
   sampler_ci.maxAnisotropy = 1.0f;
   sampler_ci.minLod = 0.0f;
-  sampler_ci.maxLod = 1.0f;
+  sampler_ci.maxLod = static_cast<float>(Scene::kMaxTextureMipLevels);
   sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
   sampler_ci.unnormalizedCoordinates = VK_FALSE;
   create_result =

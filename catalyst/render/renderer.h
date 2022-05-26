@@ -70,16 +70,24 @@ class Application :: Renderer {
     MaterialUniformBlock();
     static size_t GetSize();
   };
+  struct SkyboxUniform {
+    int specular_cubemap_id;
+    int diffuse_cubemap_id;
+    float specular_intensity;
+    float diffuse_intensity;
+  };
   struct SceneDrawDetails {
     PushConstantData push_constants;
     DirectionalLightUniform directional_light_uniform;
     MaterialUniformBlock material_uniform_block;
+    SkyboxUniform skybox_uniform;
   };
   struct SceneResourceDetails {
     uint32_t mesh_count;
     uint32_t texture_count;
     uint32_t vertex_count;
     uint32_t index_count;
+    uint32_t cubemap_count;
     std::vector<uint32_t> vertex_offsets_;
     std::vector<uint32_t> index_offsets_;
   };
@@ -121,6 +129,7 @@ class Application :: Renderer {
   VkPipeline debugdraw_pipeline_;
   VkPipeline debugdraw_lines_pipeline_;
   VkPipeline depthmap_pipeline_;
+  VkPipeline skybox_pipeline_;
   VkRenderPass render_pass_;
   VkRenderPass depthmap_render_pass_;
   std::vector<VkFramebuffer> framebuffers_;
@@ -154,6 +163,13 @@ class Application :: Renderer {
   std::vector<VkDeviceMemory> texture_memory_;
   std::vector<VkImage> texture_images_;
   std::vector<VkImageView> texture_image_views_;
+  std::vector<VkDeviceMemory> cubemap_memory_;
+  std::vector<VkImage> cubemap_images_;
+  std::vector<VkImageView> cubemap_image_views_;
+  std::vector<VkDeviceMemory> skybox_uniform_memory_;
+  std::vector<VkBuffer> skybox_uniform_buffers_;
+  VkDeviceMemory skybox_vertex_memory_;
+  VkBuffer skybox_vertex_buffer_;
 
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
@@ -216,6 +232,9 @@ class Application :: Renderer {
   void CreateDepthmapPipeline();
   void BeginDepthmapRenderPass(VkCommandBuffer& cmd, VkFramebuffer& framebuffer);
 
+  // Rendering Pipeline - Skybox
+  void CreateSkyboxPipeline();
+
   // Needed for each window, can be in rendermanager_surface.cc
   void CreateCommandPool();
   void CreateCommandBuffers();
@@ -234,11 +253,14 @@ class Application :: Renderer {
   void CreateDirectionalShadowmapResources();
   void CreateMaterialUniformBuffer();
   void CreateTextureResources();
+  void CreateCubemapResources();
+  void CreateSkyboxResources();
 
   // Scene Resources
   void LoadSceneResources();
   void LoadMeshes();
   void LoadTextures();
+  void LoadCubemaps();
 
   // Utilities - renderer_utilities.cc
   static std::vector<char> ReadFile(const std::string& path);
@@ -248,11 +270,12 @@ class Application :: Renderer {
                     const VkDeviceSize& size, const VkBufferUsageFlags& usage,
                     const VkMemoryPropertyFlags& req_props);
   void CreateImage(VkImage& image, VkDeviceMemory& memory,
-                   const VkFormat format, const VkExtent3D extent,
-                   const uint32_t mip_levels, const VkImageUsageFlags usage,
+                   VkImageCreateFlags flags, const VkFormat format,
+                   const VkExtent3D extent, const uint32_t mip_levels,
+                   const uint32_t array_layers, const VkImageUsageFlags usage,
                    const VkMemoryPropertyFlags req_props);
   void CreateImageView(VkImageView& image_view, VkImage& image,
-                       const VkFormat format,
+                       VkImageViewType type, const VkFormat format,
                        const VkImageAspectFlags aspect_flags);
   void TransitionImageLayout(VkImage& image,
                              const VkImageAspectFlagBits image_aspect,

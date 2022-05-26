@@ -83,6 +83,30 @@ void EditorWindow::QtWindow::QtResourcePanel::Populate() {
     treemodel_->setItem(row_count, 1, item_type);
     row_count++;
   }
+  for (uint32_t cmap_i = 0;
+       cmap_i < static_cast<uint32_t>(scene_->cubemaps_.size()); cmap_i++) {
+    QStandardItem* item_name = new QStandardItem(
+        QString::fromStdString(scene_->cubemaps_[cmap_i]->name_));
+    QStandardItem* item_type = new QStandardItem(QString::fromStdString(
+        catalyst::kResourceTypeNames[static_cast<uint32_t>(
+            catalyst::ResourceType::kCubemap)]));
+    item_type->setEditable(false);
+    treemodel_->setItem(row_count, 0, item_name);
+    treemodel_->setItem(row_count, 1, item_type);
+    row_count++;
+  }
+  for (uint32_t sbox_i = 0;
+       sbox_i < static_cast<uint32_t>(scene_->skyboxes_.size()); sbox_i++) {
+    QStandardItem* item_name = new QStandardItem(
+        QString::fromStdString(scene_->skyboxes_[sbox_i]->name_));
+    QStandardItem* item_type = new QStandardItem(QString::fromStdString(
+        catalyst::kResourceTypeNames[static_cast<uint32_t>(
+            catalyst::ResourceType::kSkybox)]));
+    item_type->setEditable(false);
+    treemodel_->setItem(row_count, 0, item_name);
+    treemodel_->setItem(row_count, 1, item_type);
+    row_count++;
+  }
   treeview_->setModel(treemodel_);
 }
 catalyst::Resource*

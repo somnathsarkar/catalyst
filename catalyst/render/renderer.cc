@@ -49,6 +49,8 @@ void Application::Renderer::StartUp() {
   CreateDirectionalShadowmapResources();
   CreateMaterialUniformBuffer();
   CreateTextureResources();
+  CreateCubemapResources();
+  CreateSkyboxResources();
   WriteDescriptorSets();
 
   CreateFramebuffers();
@@ -106,6 +108,15 @@ void Application::Renderer::LateShutDown() {
   texture_images_.clear();
   texture_memory_.clear();
 
+  for (uint32_t cubemap_i = 0; cubemap_i < Scene::kMaxCubemaps; cubemap_i++) {
+    vkDestroyImageView(device_, cubemap_image_views_[cubemap_i], nullptr);
+    vkFreeMemory(device_, cubemap_memory_[cubemap_i], nullptr);
+    vkDestroyImage(device_, cubemap_images_[cubemap_i], nullptr);
+  }
+  cubemap_image_views_.clear();
+  cubemap_images_.clear();
+  cubemap_memory_.clear();
+
   vkDestroyBuffer(device_, vertex_buffer_, nullptr);
   vkFreeMemory(device_, vertex_memory_, nullptr);
   vkDestroyBuffer(device_, index_buffer_, nullptr);
@@ -114,6 +125,22 @@ void Application::Renderer::LateShutDown() {
     vkDestroyBuffer(device_, buffer_, nullptr);
   for (VkDeviceMemory memory_ : directional_light_uniform_memory_)
     vkFreeMemory(device_, memory_, nullptr);
+  directional_light_uniform_buffers_.clear();
+  directional_light_uniform_memory_.clear();
+  for (VkBuffer buffer_ : material_uniform_buffers_)
+    vkDestroyBuffer(device_, buffer_, nullptr);
+  for (VkDeviceMemory memory_ : material_uniform_memory_)
+    vkFreeMemory(device_, memory_, nullptr);
+  material_uniform_buffers_.clear();
+  material_uniform_memory_.clear();
+  for (VkBuffer buffer_ : skybox_uniform_buffers_)
+    vkDestroyBuffer(device_, buffer_, nullptr);
+  for (VkDeviceMemory memory_ : skybox_uniform_memory_)
+    vkFreeMemory(device_, memory_, nullptr);
+  skybox_uniform_buffers_.clear();
+  skybox_uniform_memory_.clear();
+  vkDestroyBuffer(device_, skybox_vertex_buffer_, nullptr);
+  vkFreeMemory(device_, skybox_vertex_memory_, nullptr);
 
   // Destroy fixed size pipelines
   vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);

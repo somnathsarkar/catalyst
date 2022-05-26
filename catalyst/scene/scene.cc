@@ -16,12 +16,15 @@ Scene::Scene() {
   root_ = new SceneObject(this, "root");
   object_name_map_["root"] = root_;
   CreatePrimitiveMeshes();
+  CreatePrimitiveTextures();
   CreatePrimitiveMaterials();
+  CreatePrimitiveCubemaps();
+  CreatePrimitiveSkyboxes();
 }
 Scene::~Scene() { delete root_; }
-MeshObject* Scene::AddPrimitive(SceneObject* parent, PrimitiveType type) {
+MeshObject* Scene::AddPrimitiveMesh(SceneObject* parent, PrimitiveMeshType type) {
   std::string object_name =
-      GetAvailableObjectName(kPrimitiveNames[static_cast<uint32_t>(type)]);
+      GetAvailableObjectName(kPrimitiveMeshNames[static_cast<uint32_t>(type)]);
   MeshObject* mesh_object =
       new MeshObject(this, object_name,
                      static_cast<uint32_t>(type));
@@ -102,10 +105,24 @@ Material* Scene::AddMaterial(const std::string& name) {
 }
 Texture* Scene::AddTexture(const std::string& name) {
   std::string tex_name = GetAvailableResourceName(name);
-  Texture* tex = new Texture(this,tex_name);
+  Texture* tex = new Texture(this, tex_name);
   textures_.push_back(tex);
   resource_name_map_[tex_name] = tex;
   return tex;
+}
+Cubemap* Scene::AddCubemap(const std::string& name) {
+  std::string cmap_name = GetAvailableResourceName(name);
+  Cubemap* cmap = new Cubemap(this, cmap_name);
+  cubemaps_.push_back(cmap);
+  resource_name_map_[cmap_name] = cmap;
+  return cmap;
+}
+Skybox* Scene::AddSkybox(const std::string& name) {
+  std::string sbox_name = GetAvailableResourceName(name);
+  Skybox* sbox = new Skybox(this, sbox_name);
+  skyboxes_.push_back(sbox);
+  resource_name_map_[sbox_name] = sbox;
+  return sbox;
 }
 void Scene::DuplicateResource(const Resource* resource) {
   const std::string& initial_name = resource->name_;
@@ -193,13 +210,13 @@ std::string Scene::GetAvailableResourceName(const std::string& prefix) {
 void Scene::CreatePrimitiveMeshes() {
   // Empty
   Mesh* empty =
-      AddMesh(kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kEmpty)]);
+      AddMesh(kPrimitiveMeshNames[static_cast<uint32_t>(PrimitiveMeshType::kEmpty)]);
   empty->vertices.clear();
   empty->indices.clear();
   empty->material_id = 0;
   // Cube
   Mesh* cube =
-      AddMesh(kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kCube)]);
+      AddMesh(kPrimitiveMeshNames[static_cast<uint32_t>(PrimitiveMeshType::kCube)]);
   cube->vertices = {
       {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.875f, 0.5f}},
       {{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.625f, 0.75f}},
@@ -242,7 +259,7 @@ void Scene::CreatePrimitiveMeshes() {
   cube->material_id = 0;
   // Teapot
   Mesh* teapot =
-      AddMesh(kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kTeapot)]);
+      AddMesh(kPrimitiveMeshNames[static_cast<uint32_t>(PrimitiveMeshType::kTeapot)]);
   Assimp::Importer *importer = new Assimp::Importer();
   const aiScene* teapot_scene = importer->ReadFile(
       "../assets/models/teapot.obj",
@@ -268,7 +285,7 @@ void Scene::CreatePrimitiveMeshes() {
   teapot->material_id = 0;
   // Bunny 
   Mesh* bunny =
-      AddMesh(kPrimitiveNames[static_cast<uint32_t>(PrimitiveType::kBunny)]);
+      AddMesh(kPrimitiveMeshNames[static_cast<uint32_t>(PrimitiveMeshType::kBunny)]);
   importer->FreeScene();
   const aiScene* bunny_scene =
       importer->ReadFile("../assets/models/bun_zipper.obj",
@@ -304,7 +321,36 @@ void Scene::CreatePrimitiveMaterials() {
   standard->normal_texture_id_ = -1;
   standard->roughness_texture_id_ = -1;
 }
-Aabb Scene::ComputeAabb(const SceneObject* scene_object) const {
+void Scene::CreatePrimitiveTextures() {
+  Texture* black_texture =
+      AddTexture(kPrimitiveTextureNames[static_cast<uint32_t>(
+          PrimitiveTextureType::kBlack)]);
+  black_texture->path_ = "../assets/textures/black.png";
+  Texture* white_texture =
+      AddTexture(kPrimitiveTextureNames[static_cast<uint32_t>(
+          PrimitiveTextureType::kWhite)]);
+  white_texture->path_ = "../assets/textures/white.png";
+}
+void Scene::CreatePrimitiveCubemaps() {
+  Cubemap* meadow_specular =
+      AddCubemap(kPrimitiveCubemapNames[static_cast<uint32_t>(
+          PrimitiveCubemapType::kMeadowSpecular)]);
+  meadow_specular->path_ = "../assets/cubemaps/meadow/specular";
+  Cubemap* meadow_diffuse =
+      AddCubemap(kPrimitiveCubemapNames[static_cast<uint32_t>(
+          PrimitiveCubemapType::kMeadowDiffuse)]);
+  meadow_diffuse->path_ = "../assets/cubemaps/meadow/diffuse";
+}
+void Scene::CreatePrimitiveSkyboxes() {
+  Skybox* meadow = AddSkybox(kPrimitiveSkyboxNames[static_cast<uint32_t>(
+      PrimitiveSkyboxType::kMeadow)]);
+  meadow->specular_cubemap_id_ =
+      static_cast<uint32_t>(PrimitiveCubemapType::kMeadowSpecular);
+  meadow->diffuse_cubemap_id_ =
+      static_cast<uint32_t>(PrimitiveCubemapType::kMeadowDiffuse);
+}
+Aabb
+    Scene::ComputeAabb(const SceneObject* scene_object) const {
   glm::mat4 parent_transform = GetParentTransform(scene_object);
   Aabb aabb(
       glm::vec3(parent_transform *

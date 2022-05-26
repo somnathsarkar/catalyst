@@ -91,8 +91,20 @@ std::function<int(void)> Property::CreateIntegerGetter(int* int_field) {
   return getter;
 }
 std::function<void(int)> Property::CreateIntegerSetter(int* int_field) {
-  std::function<void(int)> getter = [int_field](int new_value) -> void { *int_field = new_value; };
+  std::function<void(int)> setter = [int_field](int new_value) -> void { *int_field = new_value; };
+  return setter;
+}
+std::function<float(void)> Property::CreateFloatGetter(float* field) {
+  std::function<float(void)> getter = [field]() -> float {
+    return *field;
+  };
   return getter;
+}
+std::function<void(float)> Property::CreateFloatSetter(float* field) {
+  std::function<void(float)> setter = [field](float new_value) -> void {
+    *field = new_value;
+  };
+  return setter;
 }
 Property::Property(const std::string& property_name,
                    const PropertyType& property_type) : name_(property_name),type_(property_type) {}

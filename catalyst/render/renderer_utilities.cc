@@ -65,21 +65,20 @@ void Application::Renderer::CreateBuffer(
   ASSERT(bind_result == VK_SUCCESS, "Failed to bind memory to buffer!");
 }
 
-void Application::Renderer::CreateImage(VkImage& image, VkDeviceMemory& memory,
-                                        const VkFormat format,
-                                        const VkExtent3D extent,
-                                        const uint32_t mip_levels,
-                                        const VkImageUsageFlags usage,
-                                        const VkMemoryPropertyFlags req_props) {
+void Application::Renderer::CreateImage(
+    VkImage& image, VkDeviceMemory& memory, VkImageCreateFlags flags,
+    const VkFormat format, const VkExtent3D extent, const uint32_t mip_levels,
+    const uint32_t array_layers, const VkImageUsageFlags usage,
+    const VkMemoryPropertyFlags req_props) {
   VkImageCreateInfo image_ci{};
   image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   image_ci.pNext = nullptr;
-  image_ci.flags = 0;
+  image_ci.flags = flags;
   image_ci.imageType = VK_IMAGE_TYPE_2D;
   image_ci.format = format;
   image_ci.extent = extent;
   image_ci.mipLevels = mip_levels;
-  image_ci.arrayLayers = 1;
+  image_ci.arrayLayers = array_layers;
   image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
   image_ci.tiling = VK_IMAGE_TILING_OPTIMAL;
   image_ci.usage = usage;
@@ -106,14 +105,14 @@ void Application::Renderer::CreateImage(VkImage& image, VkDeviceMemory& memory,
 }
 
 void Application::Renderer::CreateImageView(
-    VkImageView& image_view, VkImage& image, const VkFormat format,
-    const VkImageAspectFlags aspect_flags) {
+    VkImageView& image_view, VkImage& image, VkImageViewType type,
+    const VkFormat format, const VkImageAspectFlags aspect_flags) {
   VkImageViewCreateInfo view_ci{};
   view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
   view_ci.pNext = nullptr;
   view_ci.flags = 0;
   view_ci.image = image;
-  view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  view_ci.viewType = type;
   view_ci.format = format;
   view_ci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
   view_ci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -123,7 +122,7 @@ void Application::Renderer::CreateImageView(
   view_ci.subresourceRange.baseMipLevel = 0;
   view_ci.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
   view_ci.subresourceRange.baseArrayLayer = 0;
-  view_ci.subresourceRange.layerCount = 1;
+  view_ci.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
   VkResult create_result =
       vkCreateImageView(device_, &view_ci, nullptr, &image_view);
   ASSERT(create_result == VK_SUCCESS, "Failed to create image view!");
@@ -152,7 +151,7 @@ void Application::Renderer::TransitionImageLayout(
   image_barrier.subresourceRange.aspectMask = image_aspect;
   image_barrier.subresourceRange.baseArrayLayer = 0;
   image_barrier.subresourceRange.baseMipLevel = 0;
-  image_barrier.subresourceRange.layerCount = 1;
+  image_barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
   image_barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
   vkCmdPipelineBarrier(cmd, src_scope, dst_scope, 0, 0, nullptr, 0, nullptr, 1,
                        &image_barrier);
