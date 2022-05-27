@@ -22,14 +22,31 @@ vec3 GetViewPos(vec2 tex_coord){
 	return viewPos4.xyz/viewPos4.w;
 }
 
+vec3 GetViewNormal(vec3 view_pos){
+	vec2 texel_size = 1.0f/textureSize(depthmap,0);
+	vec2 screenPosX0 = screenPos+vec2(-1.0f,0.0f)*texel_size;
+	vec3 view_pos_x0 = GetViewPos(screenPosX0);
+	vec2 screenPosX1 = screenPos+vec2(1.0f,0.0f)*texel_size;
+	vec3 view_pos_x1 = GetViewPos(screenPosX1);
+	vec2 screenPosY0 = screenPos+vec2(0.0f,-1.0f)*texel_size;
+	vec3 view_pos_y0 = GetViewPos(screenPosY0);
+	vec2 screenPosY1 = screenPos+vec2(0.0f,1.0f)*texel_size;
+	vec3 view_pos_y1 = GetViewPos(screenPosY1);
+	vec3 view_diff_x = view_pos-view_pos_x0;
+	vec3 view_diff_y = view_pos-view_pos_y1;
+	if(distance(view_pos_x0,view_pos)>distance(view_pos_x1,view_pos)){
+		view_diff_x = view_pos_x1-view_pos;
+	}
+	if(distance(view_pos_y0,view_pos)<distance(view_pos_y1,view_pos)){
+		view_diff_y = view_pos_y0-view_pos;
+	}
+	vec3 view_normal = normalize(cross(view_diff_x,view_diff_y));
+	return view_normal;
+}
+
 void main(){
 	vec3 view_pos = GetViewPos(screenPos);
-	vec2 texel_size = 1.0f/textureSize(depthmap,0);
-	vec2 screenPosX = screenPos+vec2(1.0f,0.0f)*texel_size;
-	vec3 view_pos_x = GetViewPos(screenPosX);
-	vec2 screenPosY = screenPos+vec2(0.0f,1.0f)*texel_size;
-	vec3 view_pos_y = GetViewPos(screenPosY);
-	vec3 view_normal = normalize(cross(view_pos_x-view_pos,view_pos-view_pos_y));
+	vec3 view_normal = GetViewNormal(view_pos);
 	vec4 noise_sample = normalize(texture(noisemap,screenPos));
 	vec3 view_bitangent = normalize(cross(view_normal,vec3(1.0f,0.0f,0.0f)));
 	vec3 view_tangent = normalize(cross(view_normal,view_bitangent));
