@@ -69,13 +69,13 @@ void main(){
 	vec3 view_pos = GetViewPos(ivec2(0,0));
 	vec3 view_normal = GetViewNormal(view_pos);
 	vec4 noise_sample = normalize(texture(noisemap,screenPos));
-	vec3 view_bitangent = normalize(cross(view_normal,vec3(1.0f,0.0f,0.0f)));
+	vec3 view_bitangent = normalize(cross(view_normal,noise_sample.xyz));
 	vec3 view_tangent = normalize(cross(view_normal,view_bitangent));
 	mat3 view_tbn = mat3(view_tangent,view_bitangent,view_normal);
 	float ao = 0.0f;
 	for(int i = 0; i<NUM_SAMPLES; i++){
 		vec3 sample_direction = view_tbn*ssao_sample_uniform.samples[i].xyz;
-		vec3 sample_view_pos = 0.1f*sample_direction+view_pos;
+		vec3 sample_view_pos = sample_direction+view_pos;
 		vec4 sample_view_pos4 = vec4(sample_view_pos,1.0f);
 		vec4 sample_clip_pos4 = inverse(clipToViewTransform)*sample_view_pos4;
 		vec3 sample_clip_pos = sample_clip_pos4.xyz/sample_clip_pos4.w;

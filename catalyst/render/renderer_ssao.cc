@@ -84,7 +84,13 @@ void Application::Renderer::CreateSsaoResources() {
     glm::vec3 noise = glm::vec3(random_float(random_gen) * 0.7f - 0.35f,
                                 random_float(random_gen) * 0.7f - 0.35f,
                                 random_float(random_gen));
-    samples[sample_i] = glm::vec4(glm::normalize(noise),0.0f);
+    glm::vec3 sample_dir = glm::normalize(noise);
+    // Quadratic distribution between 0.01f and 1.0f - concentration decreases with larger length
+    float sample_len_factor = static_cast<float>(sample_i) / kSsaoSamples;
+    float sample_len_scale = 0.1f + 0.9f * sample_len_factor;
+    float sample_len =
+        random_float(random_gen) * sample_len_scale * sample_len_scale;
+    samples[sample_i] = glm::vec4(sample_dir*sample_len,0.0f);
   }
 
   // Create Staging Buffer
