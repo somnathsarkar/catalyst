@@ -18,7 +18,7 @@ Application::Renderer::MaterialUniformBlock::MaterialUniformBlock()
     : materials_(static_cast<size_t>(Scene::kMaxMaterials)),
       material_count_(0) {}
 size_t Application::Renderer::MaterialUniformBlock::GetSize() {
-  return sizeof(MaterialUniformBlock) * Scene::kMaxMaterials +
+  return sizeof(MaterialUniform) * Scene::kMaxMaterials +
          sizeof(uint32_t);
 }
 void Application::Renderer::LoadScene(const Scene& scene) {
@@ -465,7 +465,7 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
               &material_uniform_data);
   size_t material_array_size = Scene::kMaxMaterials * sizeof(MaterialUniform);
   memcpy(material_uniform_data, details.material_uniform_block.materials_.data(), material_array_size);
-  memcpy(static_cast<char*>(material_uniform_data) + material_array_size,
+  memcpy(reinterpret_cast<char*>(material_uniform_data) + material_array_size,
          &details.material_uniform_block.material_count_, sizeof(uint32_t));
   vkUnmapMemory(device_, material_uniform_memory_[image_i]);
 
