@@ -18,7 +18,7 @@ struct Material{
     int metallic_texture_id;
     int roughness_texture_id;
     int normal_texture_id;
-    int _pad;
+    int ao_texture_id;
 };
 
 struct Skybox{
@@ -48,14 +48,17 @@ layout(binding = 5) uniform skybox_uniform_block{
     Skybox skybox;
 }skybox_uniform;
 
+layout(binding = 6) uniform sampler2D ssao_map;
+
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;
 layout(location = 2) in vec3 worldTangent;
 layout(location = 3) in vec3 worldBiTangent;
 layout(location = 4) in vec4 viewPos;
-layout(location = 5) in vec3 worldCamera;
-layout(location = 6) in vec2 texCoords;
-layout(location = 7) flat in uint materialId;
+layout(location = 5) in vec4 clipPos;
+layout(location = 6) in vec3 worldCamera;
+layout(location = 7) in vec2 texCoords;
+layout(location = 8) flat in uint materialId;
 
 layout(location = 0) out vec4 outColor;
 
@@ -84,13 +87,18 @@ void main() {
     if(material.roughness_texture_id>-1)
         roughness = texture(textures[material.roughness_texture_id],texCoords).r;
     vec3 R = normalize(reflect(-v,n));
+    
+    vec2 screen_pos = (clipPos.xy/clipPos.w+1.0f)/2.0f;
+    vec3 ssao_sample = texture(ssao_map,screen_pos).rgb;
+    if(material.ao_texture_id>-1)
+        ssao_sample = texture(textures[material.ao_texture_id],texCoords).rgb;
 
     // Environmental IBL
     // Specular component
     float roughness_mip = (roughness*MAX_MIP_LEVEL);
-    currentColor += vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
+    currentColor += ssao_sample*vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
     // Diffuse component
-    currentColor += albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
+    currentColor += ssao_sample*albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
 
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){
         DirectionalLight light = directional_light_uniform.lights[light_i];

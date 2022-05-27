@@ -12,7 +12,7 @@ void Application::Renderer::CreateDepthmapRenderPass() {
     depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
     depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depth_attachment.finalLayout =
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference depth_ref{};
     depth_ref.attachment = 0;
@@ -35,10 +35,10 @@ void Application::Renderer::CreateDepthmapRenderPass() {
     dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
     dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
                               VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+    dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     VkRenderPassCreateInfo render_pass_ci{};
     render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -269,7 +269,7 @@ void Application::Renderer::CreateDepthmapFramebuffers() {
 }
 
 void Application::Renderer::BeginDepthmapRenderPass(VkCommandBuffer& cmd,
-                                                    uint32_t frame_i) {
+                                                    uint32_t image_i) {
   VkClearValue depth_clear;
   depth_clear.depthStencil.depth = 1.0f;
   depth_clear.depthStencil.stencil = 0;
@@ -278,7 +278,7 @@ void Application::Renderer::BeginDepthmapRenderPass(VkCommandBuffer& cmd,
   render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   render_pass_bi.pNext = nullptr;
   render_pass_bi.renderPass = depthmap_render_pass_;
-  render_pass_bi.framebuffer = depthmap_framebuffers_[frame_i];
+  render_pass_bi.framebuffer = depthmap_framebuffers_[image_i];
   render_pass_bi.renderArea.extent = swapchain_extent_;
   render_pass_bi.renderArea.offset.x = 0;
   render_pass_bi.renderArea.offset.y = 0;

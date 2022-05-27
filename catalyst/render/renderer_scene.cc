@@ -18,7 +18,7 @@ Application::Renderer::MaterialUniformBlock::MaterialUniformBlock()
     : materials_(static_cast<size_t>(Scene::kMaxMaterials)),
       material_count_(0) {}
 size_t Application::Renderer::MaterialUniformBlock::GetSize() {
-  return sizeof(MaterialUniformBlock) * Scene::kMaxMaterials +
+  return sizeof(MaterialUniform) * Scene::kMaxMaterials +
          sizeof(uint32_t);
 }
 void Application::Renderer::LoadScene(const Scene& scene) {
@@ -384,9 +384,9 @@ void Application::Renderer::UnloadScene() {
   vkDeviceWaitIdle(device_);
   scene_ = nullptr;
 }
-void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
+void Application::Renderer::DrawScene(uint32_t image_i) {
   LoadSceneResources();
-  VkCommandBuffer& cmd = command_buffers_[frame_i];
+  VkCommandBuffer& cmd = command_buffers_[image_i];
   VkDeviceSize vertex_offsets[] = {static_cast<uint64_t>(0)};
   vkCmdBindVertexBuffers(cmd, 0, 1, &vertex_buffer_, vertex_offsets);
   vkCmdBindIndexBuffer(cmd, index_buffer_, 0, VK_INDEX_TYPE_UINT32);
@@ -410,6 +410,7 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
     mat_uniform.metallic_texture_id = mat->metallic_texture_id_;
     mat_uniform.roughness_texture_id = mat->roughness_texture_id_;
     mat_uniform.normal_texture_id = mat->normal_texture_id_;
+    mat_uniform.ao_texture_id = mat->ao_texture_id_;
   }
   details.skybox_uniform.specular_cubemap_id =
       scene_->skyboxes_[0]->specular_cubemap_id_;
@@ -421,7 +422,7 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
       scene_->skyboxes_[0]->diffuse_intensity_;
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
-  DrawSceneShadowmaps(cmd, frame_i, details);
+  DrawSceneShadowmaps(cmd, image_i, details);
   
   vkCmdPushConstants(cmd, graphics_pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT,
                      offsetof(PushConstantData, world_to_view_transform),
@@ -435,35 +436,45 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
   DrawSceneZPrePass(cmd, image_i, details);
 
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          ssao_pipeline_layout_, 0, 1,
+                          &ssao_descriptor_sets_[image_i], 0, nullptr);
+  BeginSsaoRenderPass(cmd, image_i);
+  vkCmdBindVertexBuffers(cmd, 0, 1, &skybox_vertex_buffer_, vertex_offsets);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ssao_pipeline_);
+  vkCmdDraw(cmd, 6, 1, 0, 0);
+  vkCmdEndRenderPass(cmd);
+
+  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           graphics_pipeline_layout_, 0, 1,
-                          &descriptor_sets_[frame_i], 0, nullptr);
+                          &descriptor_sets_[image_i], 0, nullptr);
   BeginGraphicsRenderPass(cmd, image_i);
 
   void* uniform_data;
-  vkMapMemory(device_, directional_light_uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
+  vkMapMemory(device_, directional_light_uniform_memory_[image_i], 0,
+              VK_WHOLE_SIZE, 0,
               &uniform_data);
   size_t light_array_size =
       Scene::kMaxDirectionalLights * sizeof(DirectionalLight);
   memcpy(uniform_data, details.directional_light_uniform.lights_.data(),
          light_array_size);
-  memcpy(static_cast<char*>(uniform_data)+light_array_size, &details.directional_light_uniform.light_count_,
-         sizeof(uint32_t));
-  vkUnmapMemory(device_, directional_light_uniform_memory_[frame_i]);
+  memcpy(static_cast<char*>(uniform_data) + light_array_size,
+         &details.directional_light_uniform.light_count_, sizeof(uint32_t));
+  vkUnmapMemory(device_, directional_light_uniform_memory_[image_i]);
 
   void* material_uniform_data;
-  vkMapMemory(device_, material_uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
+  vkMapMemory(device_, material_uniform_memory_[image_i], 0, VK_WHOLE_SIZE, 0,
               &material_uniform_data);
   size_t material_array_size = Scene::kMaxMaterials * sizeof(MaterialUniform);
   memcpy(material_uniform_data, details.material_uniform_block.materials_.data(), material_array_size);
-  memcpy(static_cast<char*>(material_uniform_data) + material_array_size,
+  memcpy(reinterpret_cast<char*>(material_uniform_data) + material_array_size,
          &details.material_uniform_block.material_count_, sizeof(uint32_t));
-  vkUnmapMemory(device_, material_uniform_memory_[frame_i]);
+  vkUnmapMemory(device_, material_uniform_memory_[image_i]);
 
   void* skybox_uniform_data;
-  vkMapMemory(device_, skybox_uniform_memory_[frame_i], 0, VK_WHOLE_SIZE, 0,
+  vkMapMemory(device_, skybox_uniform_memory_[image_i], 0, VK_WHOLE_SIZE, 0,
               &skybox_uniform_data);
   memcpy(skybox_uniform_data, &details.skybox_uniform, sizeof(SkyboxUniform));
-  vkUnmapMemory(device_, skybox_uniform_memory_[frame_i]);
+  vkUnmapMemory(device_, skybox_uniform_memory_[image_i]);
 
   vkCmdBindVertexBuffers(cmd, 0, 1, &skybox_vertex_buffer_, vertex_offsets);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline_);
@@ -476,7 +487,7 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
   DrawSceneMeshes(cmd, graphics_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
 
   if (debug_enabled_) {
-    DebugDrawScene(frame_i);
+    DebugDrawScene(image_i);
   }
   vkCmdEndRenderPass(cmd);
 }
@@ -513,8 +524,8 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
     DrawSceneMeshes(cmd, layout, details, child, model_transform);
   }
 }
-void Application::Renderer::DebugDrawScene(uint32_t frame_i) {
-  VkCommandBuffer& cmd = command_buffers_[frame_i];
+void Application::Renderer::DebugDrawScene(uint32_t image_i) {
+  VkCommandBuffer& cmd = command_buffers_[image_i];
   SceneDrawDetails dummy_details;
   for (const DebugDrawObject* debugdraw_object : scene_->debugdraw_objects_) {
     switch (debugdraw_object->type_) {
@@ -534,15 +545,15 @@ void Application::Renderer::DebugDrawScene(uint32_t frame_i) {
         const DebugDrawAABB* draw_aabb =
             static_cast<const DebugDrawAABB*>(debugdraw_object);
         const Aabb& aabb = draw_aabb->aabb_;
-        DebugDrawAabb(frame_i, aabb);
+        DebugDrawAabb(image_i, aabb);
         break;
       }
     }
   }
 }
-void Application::Renderer::DebugDrawAabb(uint32_t frame_i,
+void Application::Renderer::DebugDrawAabb(uint32_t image_i,
                                           const Aabb& aabb) {
-  VkCommandBuffer& cmd = command_buffers_[frame_i];
+  VkCommandBuffer& cmd = command_buffers_[image_i];
   static auto BitmaskToVertex = [](uint32_t bm, const Aabb& aabb) -> Vertex {
     Vertex a{};
     if (bm & (1 << 0))
@@ -572,9 +583,9 @@ void Application::Renderer::DebugDrawAabb(uint32_t frame_i,
     }
   }
   void* data;
-  vkMapMemory(device_, debugdraw_memory_[frame_i], 0, VK_WHOLE_SIZE, 0, &data);
+  vkMapMemory(device_, debugdraw_memory_[image_i], 0, VK_WHOLE_SIZE, 0, &data);
   memcpy(data, vertices.data(), static_cast<size_t>(vertices.size() * sizeof(Vertex)));
-  vkUnmapMemory(device_, debugdraw_memory_[frame_i]);
+  vkUnmapMemory(device_, debugdraw_memory_[image_i]);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                     debugdraw_lines_pipeline_);
   glm::mat4 identity(1.0f);
@@ -583,7 +594,8 @@ void Application::Renderer::DebugDrawAabb(uint32_t frame_i,
                      offsetof(PushConstantData, model_to_world_transform),
                      sizeof(glm::mat4), &identity);
   VkDeviceSize vertex_offsets[] = {static_cast<uint64_t>(0)};
-  vkCmdBindVertexBuffers(cmd, 0, 1, &debugdraw_buffer_[frame_i], vertex_offsets);
+  vkCmdBindVertexBuffers(cmd, 0, 1, &debugdraw_buffer_[image_i],
+                         vertex_offsets);
   vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
 }
 void Application::Renderer::DrawSceneShadowmaps(VkCommandBuffer& cmd,

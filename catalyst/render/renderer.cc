@@ -31,6 +31,8 @@ void Application::Renderer::StartUp() {
   CreateCommandBuffers();
   CreateSyncObjects();
 
+  CreateSsaoResources();
+
   CreateDescriptorSetLayout();
   CreateDescriptorPool();
   CreateDescriptorSets();
@@ -51,7 +53,9 @@ void Application::Renderer::StartUp() {
   CreateTextureResources();
   CreateCubemapResources();
   CreateSkyboxResources();
-  WriteDescriptorSets();
+  WriteFixedSizeDescriptorSets();
+
+  WriteResizeableDescriptorSets();
 
   CreateFramebuffers();
 }
@@ -142,7 +146,12 @@ void Application::Renderer::LateShutDown() {
   vkDestroyBuffer(device_, skybox_vertex_buffer_, nullptr);
   vkFreeMemory(device_, skybox_vertex_memory_, nullptr);
 
+  // Destroy descriptors - no need to destroy descriptor sets, they are cleaned up with the pool
+  vkDestroyDescriptorPool(device_, descriptor_pool_, nullptr);
+  vkDestroyDescriptorSetLayout(device_, descriptor_set_layout_, nullptr);
+
   // Destroy fixed size pipelines
+  vkDestroyPipelineLayout(device_, shadowmap_pipeline_layout_, nullptr);
   vkDestroyPipeline(device_, shadowmap_pipeline_, nullptr);
 
   // Destroy Render passes
@@ -181,7 +190,6 @@ void Application::Renderer::CreateInstance() {
     instance_extensions.push_back("VK_EXT_debug_utils");
     instance_layers.push_back("VK_LAYER_KHRONOS_validation");
   }
-
   instance_ci.enabledExtensionCount =
       static_cast<uint32_t>(instance_extensions.size());
   instance_ci.ppEnabledExtensionNames = instance_extensions.data();
