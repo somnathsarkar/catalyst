@@ -124,7 +124,7 @@ void Application::Renderer::CreateSsaoResources() {
     CreateImage(ssao_images_[frame_i], ssao_memory_[frame_i], 0,
                 ssao_format_,
                 {half_swapchain_extent_.width, half_swapchain_extent_.height, 1},
-                1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     CreateImageView(ssao_image_views_[frame_i], ssao_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, ssao_format_,
@@ -142,7 +142,7 @@ void Application::Renderer::CreateSsaoRenderPass() {
   ssao_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
   ssao_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   ssao_attachment.finalLayout =
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
   VkAttachmentReference ssao_ref{};
   ssao_ref.attachment = 0;
@@ -160,6 +160,15 @@ void Application::Renderer::CreateSsaoRenderPass() {
   subpass.preserveAttachmentCount = 0;
   subpass.pPreserveAttachments = nullptr;
 
+  VkSubpassDependency dependency{};
+  dependency.srcSubpass = 0;
+  dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+  dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
   VkRenderPassCreateInfo render_pass_ci{};
   render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   render_pass_ci.pNext = nullptr;
@@ -168,8 +177,8 @@ void Application::Renderer::CreateSsaoRenderPass() {
   render_pass_ci.pAttachments = &ssao_attachment;
   render_pass_ci.subpassCount = 1;
   render_pass_ci.pSubpasses = &subpass;
-  render_pass_ci.dependencyCount = 0;
-  render_pass_ci.pDependencies = nullptr;
+  render_pass_ci.dependencyCount = 1;
+  render_pass_ci.pDependencies = &dependency;
   VkResult create_result = vkCreateRenderPass(device_, &render_pass_ci, nullptr,
                                               &ssao_render_pass_);
   ASSERT(create_result == VK_SUCCESS, "Could not create SSAO render pass!");

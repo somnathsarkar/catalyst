@@ -46,16 +46,26 @@ void Application::Renderer::CreateDescriptorSetLayout() {
   skybox_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
   skybox_binding.pImmutableSamplers = nullptr;
 
-  VkDescriptorSetLayoutBinding bindings[] = {
-      directional_light_binding, directional_shadow_binding,
-      material_uniform_binding,  texture_binding,
-      cubemap_binding,           skybox_binding};
+  VkDescriptorSetLayoutBinding ssao_binding{};
+  ssao_binding.binding = 6;
+  ssao_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  ssao_binding.descriptorCount = 1;
+  ssao_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  ssao_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding bindings[] = {directional_light_binding,
+                                             directional_shadow_binding,
+                                             material_uniform_binding,
+                                             texture_binding,
+                                             cubemap_binding,
+                                             skybox_binding,
+                                             ssao_binding};
 
   VkDescriptorSetLayoutCreateInfo layout_ci{};
   layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   layout_ci.pNext = nullptr;
   layout_ci.flags = 0;
-  layout_ci.bindingCount = 6;
+  layout_ci.bindingCount = 7;
   layout_ci.pBindings = bindings;
   VkResult create_result = vkCreateDescriptorSetLayout(
       device_, &layout_ci, nullptr, &descriptor_set_layout_);
@@ -108,7 +118,7 @@ void Application::Renderer::CreateDescriptorPool() {
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
       frame_count * (Scene::kMaxDirectionalLights + Scene::kMaxTextures +
-                     Scene::kMaxCubemaps + 2);
+                     Scene::kMaxCubemaps + 3);
   VkDescriptorPoolSize pool_sizes[] = {uniform_size, sampler_size};
 
   VkDescriptorPoolCreateInfo pool_ci{};
@@ -281,6 +291,26 @@ void Application::Renderer::WriteFixedSizeDescriptorSets() {
 }
 
 void Application::Renderer::WriteResizeableDescriptorSets() {
+  // Graphics: SSAO Image
+  {
+    std::vector<VkDescriptorImageInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].sampler = texture_sampler_;
+      infos[frame_i].imageView = ssao_image_views_[frame_i];
+      infos[frame_i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 6;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writes[frame_i].pImageInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
   // SSAO: Depth Image
   {
     std::vector<VkDescriptorImageInfo> infos(frame_count_);
