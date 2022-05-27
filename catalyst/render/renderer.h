@@ -324,13 +324,13 @@ class Application :: Renderer {
 
   // Draw Commands
   void DrawFrame();
-  void DrawScene(uint32_t frame_i, uint32_t image_i);
+  void DrawScene(uint32_t image_i);
   void DrawScenePrePass(VkCommandBuffer& cmd, SceneDrawDetails& details, const SceneObject* focus,
                     glm::mat4 model_transform);
   void DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayout& layout, SceneDrawDetails& details,
                        const SceneObject* focus, glm::mat4 model_transform);
-  void DebugDrawScene(uint32_t frame_i);
-  void DebugDrawAabb(uint32_t frame_i, const Aabb& aabb);
+  void DebugDrawScene(uint32_t image_i);
+  void DebugDrawAabb(uint32_t image_i, const Aabb& aabb);
   void DrawSceneShadowmaps(VkCommandBuffer& cmd, uint32_t swapchain_image_i, SceneDrawDetails& details);
   void DrawSceneZPrePass(VkCommandBuffer& cmd, uint32_t swapchain_image_i,
                          SceneDrawDetails& details);

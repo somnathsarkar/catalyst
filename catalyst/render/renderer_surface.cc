@@ -850,7 +850,7 @@ void Application::Renderer::DrawFrame() {
   ASSERT(acquire_result == VK_SUCCESS || acquire_result == VK_SUBOPTIMAL_KHR,
          "Failed to acquire swapchain image!");
 
-  VkCommandBuffer& cmd = command_buffers_[frame_i];
+  VkCommandBuffer& cmd = command_buffers_[image_i];
   vkResetCommandBuffer(cmd, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
   VkCommandBufferBeginInfo cmd_bi{};
@@ -862,7 +862,7 @@ void Application::Renderer::DrawFrame() {
   ASSERT(begin_result == VK_SUCCESS,
          "Failed to begin recording command buffer!");
 
-  DrawScene(frame_i,image_i);
+  DrawScene(image_i);
   VkResult end_result = vkEndCommandBuffer(cmd);
   ASSERT(end_result == VK_SUCCESS,
          "Failed to finish recording command buffer!");

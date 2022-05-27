@@ -269,7 +269,7 @@ void Application::Renderer::CreateDepthmapFramebuffers() {
 }
 
 void Application::Renderer::BeginDepthmapRenderPass(VkCommandBuffer& cmd,
-                                                    uint32_t frame_i) {
+                                                    uint32_t image_i) {
   VkClearValue depth_clear;
   depth_clear.depthStencil.depth = 1.0f;
   depth_clear.depthStencil.stencil = 0;
@@ -278,7 +278,7 @@ void Application::Renderer::BeginDepthmapRenderPass(VkCommandBuffer& cmd,
   render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   render_pass_bi.pNext = nullptr;
   render_pass_bi.renderPass = depthmap_render_pass_;
-  render_pass_bi.framebuffer = depthmap_framebuffers_[frame_i];
+  render_pass_bi.framebuffer = depthmap_framebuffers_[image_i];
   render_pass_bi.renderArea.extent = swapchain_extent_;
   render_pass_bi.renderArea.offset.x = 0;
   render_pass_bi.renderArea.offset.y = 0;
