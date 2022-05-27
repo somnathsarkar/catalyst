@@ -61,25 +61,61 @@ void Application::Renderer::CreateDescriptorSetLayout() {
       device_, &layout_ci, nullptr, &descriptor_set_layout_);
   ASSERT(create_result == VK_SUCCESS,
          "Failed to create descriptor set layout!");
+
+  // SSAO Descriptor Layout
+  VkDescriptorSetLayoutBinding depth_binding{};
+  depth_binding.binding = 0;
+  depth_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  depth_binding.stageFlags =
+      VK_SHADER_STAGE_FRAGMENT_BIT;
+  depth_binding.descriptorCount = 1;
+  depth_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding ssn_binding{};
+  ssn_binding.binding = 1;
+  ssn_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  ssn_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  ssn_binding.descriptorCount = 1;
+  ssn_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding sample_binding{};
+  sample_binding.binding = 2;
+  sample_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  sample_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  sample_binding.descriptorCount = 1;
+  sample_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding ssao_bindings[] = {depth_binding, ssn_binding,
+                                                  sample_binding};
+
+  layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  layout_ci.pNext = nullptr;
+  layout_ci.flags = 0;
+  layout_ci.bindingCount = 3;
+  layout_ci.pBindings = ssao_bindings;
+  create_result = vkCreateDescriptorSetLayout(
+      device_, &layout_ci, nullptr, &ssao_descriptor_set_layout_);
+  ASSERT(create_result == VK_SUCCESS,
+         "Failed to create SSAO descriptor set layout!");
 }
 void Application::Renderer::CreateDescriptorPool() {
   uint32_t frame_count = frame_count_;
 
   VkDescriptorPoolSize uniform_size;
   uniform_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  uniform_size.descriptorCount = frame_count*3;
+  uniform_size.descriptorCount = frame_count*5;
   VkDescriptorPoolSize sampler_size;
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
       frame_count * (Scene::kMaxDirectionalLights + Scene::kMaxTextures +
-                     Scene::kMaxCubemaps);
+                     Scene::kMaxCubemaps + 2);
   VkDescriptorPoolSize pool_sizes[] = {uniform_size, sampler_size};
 
   VkDescriptorPoolCreateInfo pool_ci{};
   pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   pool_ci.pNext = nullptr;
   pool_ci.flags = 0;
-  pool_ci.maxSets = frame_count;
+  pool_ci.maxSets = frame_count*2;
   pool_ci.poolSizeCount = 2;
   pool_ci.pPoolSizes = pool_sizes;
   VkResult create_result =
@@ -99,10 +135,19 @@ void Application::Renderer::CreateDescriptorSets() {
   descriptor_sets_.resize(frame_count_);
   VkResult alloc_result =
       vkAllocateDescriptorSets(device_, &set_ai, descriptor_sets_.data());
-  ASSERT(alloc_result == VK_SUCCESS, "Failed to create descriptor set layout!");
+  ASSERT(alloc_result == VK_SUCCESS, "Failed to create descriptor set!");
+
+  layouts.clear();
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
+    layouts.push_back(ssao_descriptor_set_layout_);
+  set_ai.pSetLayouts = layouts.data();
+  ssao_descriptor_sets_.resize(frame_count_);
+  alloc_result =
+      vkAllocateDescriptorSets(device_, &set_ai, ssao_descriptor_sets_.data());
+  ASSERT(alloc_result == VK_SUCCESS, "Failed to create SSAO descriptor set!");
 }
 
-void Application::Renderer::WriteDescriptorSets() {
+void Application::Renderer::WriteFixedSizeDescriptorSets() {
   // Directional Lights
   std::vector<VkDescriptorBufferInfo> set_bis;
   set_bis.resize(frame_count_);
@@ -173,8 +218,7 @@ void Application::Renderer::WriteDescriptorSets() {
   texture_image_infos.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     texture_image_infos[frame_i].resize(Scene::kMaxTextures);
-    for (uint32_t tex_i = 0; tex_i < Scene::kMaxTextures;
-         tex_i++) {
+    for (uint32_t tex_i = 0; tex_i < Scene::kMaxTextures; tex_i++) {
       VkDescriptorImageInfo& set_si = texture_image_infos[frame_i][tex_i];
       set_si.sampler = texture_sampler_;
       set_si.imageView = texture_image_views_[tex_i];
@@ -234,5 +278,68 @@ void Application::Renderer::WriteDescriptorSets() {
     set_wi.pBufferInfo = &set_bis[frame_i];
   }
   vkUpdateDescriptorSets(device_, frame_count_, set_wis.data(), 0, nullptr);
+}
+
+void Application::Renderer::WriteResizeableDescriptorSets() {
+  // SSAO: Depth Image
+  {
+    std::vector<VkDescriptorImageInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].sampler = texture_sampler_;
+      infos[frame_i].imageView = depth_image_views_[frame_i];
+      infos[frame_i].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = ssao_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 0;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writes[frame_i].pImageInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
+  // SSAO: Noise Image
+  {
+    std::vector<VkDescriptorImageInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].sampler = texture_sampler_;
+      infos[frame_i].imageView = ssn_image_view_;
+      infos[frame_i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = ssao_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 1;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writes[frame_i].pImageInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
+  // SSAO: Sample Uniform
+  {
+    std::vector<VkDescriptorBufferInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].buffer = ssao_sample_uniform_;
+      infos[frame_i].offset = 0;
+      infos[frame_i].range = VK_WHOLE_SIZE;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = ssao_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 2;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writes[frame_i].pBufferInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
 }
 }  // namespace catalyst

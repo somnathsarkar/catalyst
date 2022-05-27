@@ -110,6 +110,7 @@ class Application :: Renderer {
   VkSurfaceKHR surface_;
   VkSwapchainKHR swapchain_;
   VkExtent2D swapchain_extent_;
+  VkExtent2D half_swapchain_extent_;
   VkFormat swapchain_image_format_;
   uint32_t frame_count_;
   std::vector<VkImage> swapchain_images_;
@@ -118,6 +119,14 @@ class Application :: Renderer {
   std::vector<VkDeviceMemory> depth_memory_;
   std::vector<VkImage> depth_images_;
   std::vector<VkImageView> depth_image_views_;
+  VkFormat ssao_format_;
+  std::vector<VkDeviceMemory> ssao_memory_;
+  std::vector<VkImage> ssao_images_;
+  std::vector<VkImageView> ssao_image_views_;
+  VkDeviceMemory ssn_memory_;
+  VkFormat ssn_format_;
+  VkImage ssn_image_;
+  VkImageView ssn_image_view_;
   VkSampler texture_sampler_;
   VkSampler shadowmap_sampler_;
 
@@ -126,22 +135,28 @@ class Application :: Renderer {
   VkPipelineLayout debugdraw_pipeline_layout_;
   VkPipelineLayout shadowmap_pipeline_layout_;
   VkPipelineLayout depthmap_pipeline_layout_;
+  VkPipelineLayout ssao_pipeline_layout_;
   VkPipeline graphics_pipeline_;
   VkPipeline debugdraw_pipeline_;
   VkPipeline debugdraw_lines_pipeline_;
   VkPipeline shadowmap_pipeline_;
   VkPipeline skybox_pipeline_;
   VkPipeline depthmap_pipeline_;
+  VkPipeline ssao_pipeline_;
   VkRenderPass render_pass_;
   VkRenderPass shadowmap_render_pass_;
   VkRenderPass depthmap_render_pass_;
+  VkRenderPass ssao_render_pass_;
   std::vector<VkFramebuffer> framebuffers_;
   std::vector<std::vector<VkFramebuffer>> shadowmap_framebuffers_;
   std::vector<VkFramebuffer> depthmap_framebuffers_;
+  std::vector<VkFramebuffer> ssao_framebuffers_;
 
   VkDescriptorSetLayout descriptor_set_layout_;
+  VkDescriptorSetLayout ssao_descriptor_set_layout_;
   VkDescriptorPool descriptor_pool_;
   std::vector<VkDescriptorSet> descriptor_sets_;
+  std::vector<VkDescriptorSet> ssao_descriptor_sets_;
 
   VkCommandPool command_pool_;
   std::vector<VkCommandBuffer> command_buffers_;
@@ -174,6 +189,8 @@ class Application :: Renderer {
   std::vector<VkBuffer> skybox_uniform_buffers_;
   VkDeviceMemory skybox_vertex_memory_;
   VkBuffer skybox_vertex_buffer_;
+  VkDeviceMemory ssao_sample_memory_;
+  VkBuffer ssao_sample_uniform_;
 
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
@@ -244,6 +261,13 @@ class Application :: Renderer {
   // Rendering Pipeline - Skybox
   void CreateSkyboxPipeline();
 
+  // Rendering Pipeline - SSAO
+  void CreateSsaoResources();
+  void CreateSsaoRenderPass();
+  void CreateSsaoPipeline();
+  void CreateSsaoFramebuffers();
+  void BeginSsaoRenderPass(VkCommandBuffer& cmd, uint32_t swapchain_image_i);
+
   // Needed for each window, can be in rendermanager_surface.cc
   void CreateCommandPool();
   void CreateCommandBuffers();
@@ -253,7 +277,8 @@ class Application :: Renderer {
   void CreateDescriptorSetLayout();
   void CreateDescriptorPool();
   void CreateDescriptorSets();
-  void WriteDescriptorSets();
+  void WriteFixedSizeDescriptorSets();
+  void WriteResizeableDescriptorSets();
 
   // Fixed Size Resources
   void CreateVertexBuffer();

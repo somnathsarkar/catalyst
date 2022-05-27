@@ -435,6 +435,15 @@ void Application::Renderer::DrawScene(uint32_t frame_i, uint32_t image_i) {
   DrawSceneZPrePass(cmd, image_i, details);
 
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          ssao_pipeline_layout_, 0, 1,
+                          &ssao_descriptor_sets_[image_i], 0, nullptr);
+  BeginSsaoRenderPass(cmd, image_i);
+  vkCmdBindVertexBuffers(cmd, 0, 1, &skybox_vertex_buffer_, vertex_offsets);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ssao_pipeline_);
+  vkCmdDraw(cmd, 6, 1, 0, 0);
+  vkCmdEndRenderPass(cmd);
+
+  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           graphics_pipeline_layout_, 0, 1,
                           &descriptor_sets_[frame_i], 0, nullptr);
   BeginGraphicsRenderPass(cmd, image_i);

@@ -31,6 +31,8 @@ void Application::Renderer::StartUp() {
   CreateCommandBuffers();
   CreateSyncObjects();
 
+  CreateSsaoResources();
+
   CreateDescriptorSetLayout();
   CreateDescriptorPool();
   CreateDescriptorSets();
@@ -51,7 +53,9 @@ void Application::Renderer::StartUp() {
   CreateTextureResources();
   CreateCubemapResources();
   CreateSkyboxResources();
-  WriteDescriptorSets();
+  WriteFixedSizeDescriptorSets();
+
+  WriteResizeableDescriptorSets();
 
   CreateFramebuffers();
 }
