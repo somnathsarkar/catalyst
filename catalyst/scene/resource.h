@@ -56,6 +56,8 @@ class Material : public Resource {
   int roughness_texture_id_;
 
   float reflectance_;
+
+  int ao_texture_id_;
   Material(Scene* scene, const std::string& name);
 };
 class Texture : public Resource {

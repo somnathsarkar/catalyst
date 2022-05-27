@@ -64,5 +64,5 @@ void main(){
 			ao+=1.0f/NUM_SAMPLES;
 		}
 	}
-	outColor = vec4(vec3(ao),1.0f);
+	outColor = vec4(vec3(1.0f-ao),1.0f);
 }

@@ -410,6 +410,7 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
     mat_uniform.metallic_texture_id = mat->metallic_texture_id_;
     mat_uniform.roughness_texture_id = mat->roughness_texture_id_;
     mat_uniform.normal_texture_id = mat->normal_texture_id_;
+    mat_uniform.ao_texture_id = mat->ao_texture_id_;
   }
   details.skybox_uniform.specular_cubemap_id =
       scene_->skyboxes_[0]->specular_cubemap_id_;

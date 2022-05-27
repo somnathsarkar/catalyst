@@ -61,7 +61,7 @@ class Application :: Renderer {
     int metallic_texture_id;
     int roughness_texture_id;
     int normal_texture_id;
-    int _pad;
+    int ao_texture_id;
   };
   class MaterialUniformBlock {
    public:

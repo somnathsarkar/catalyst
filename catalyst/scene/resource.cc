@@ -12,7 +12,8 @@ Material::Material(Scene* scene, const std::string& name)
       normal_texture_id_(-1),
       roughness_(0.0f),
       roughness_texture_id_(-1),
-      reflectance_(1.0f) {
+      reflectance_(1.0f),
+      ao_texture_id_(-1) {
   std::function<glm::vec3()> color_getter = [this]() -> glm::vec3 {
     return this->albedo_;
   };
@@ -65,6 +66,10 @@ Material::Material(Scene* scene, const std::string& name)
   property_manager_.AddNamedIndexProperty(
       "Normal Texture", Property::CreateIntegerGetter(&metallic_texture_id_),
       Property::CreateIntegerSetter(&metallic_texture_id_), texture_name_getter,
+      NamedIndexPropertyStyle::kAllowNone);
+  property_manager_.AddNamedIndexProperty(
+      "AO Texture", Property::CreateIntegerGetter(&ao_texture_id_),
+      Property::CreateIntegerSetter(&ao_texture_id_), texture_name_getter,
       NamedIndexPropertyStyle::kAllowNone);
 }
 Resource::Resource(Scene* scene, const std::string& name,

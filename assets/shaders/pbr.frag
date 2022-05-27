@@ -18,7 +18,7 @@ struct Material{
     int metallic_texture_id;
     int roughness_texture_id;
     int normal_texture_id;
-    int _pad;
+    int ao_texture_id;
 };
 
 struct Skybox{
@@ -90,13 +90,15 @@ void main() {
     
     vec2 screen_pos = (clipPos.xy/clipPos.w+1.0f)/2.0f;
     vec3 ssao_sample = texture(ssao_map,screen_pos).rgb;
+    if(material.ao_texture_id>-1)
+        ssao_sample = texture(textures[material.ao_texture_id],texCoords).rgb;
 
     // Environmental IBL
     // Specular component
     float roughness_mip = (roughness*MAX_MIP_LEVEL);
-    currentColor += (1-ssao_sample)*vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
+    currentColor += ssao_sample*vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
     // Diffuse component
-    currentColor += (1-ssao_sample)*albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
+    currentColor += ssao_sample*albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
 
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){
         DirectionalLight light = directional_light_uniform.lights[light_i];
