@@ -72,6 +72,7 @@ add_shader_pair("debugdraw")
 add_shader_pair("depthmap")
 add_shader_pair("skybox")
 add_shader_pair("ssao")
+add_shader_pair("hdr")
 
 add_model("bun_zipper.obj")
 add_model("teapot.obj")

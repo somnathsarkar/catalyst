@@ -347,10 +347,12 @@ void Application::Renderer::DestroySwapchain() {
     vkDestroyFramebuffer(device_, framebuffers_[frame_i], nullptr);
     vkDestroyFramebuffer(device_, depthmap_framebuffers_[frame_i], nullptr);
     vkDestroyFramebuffer(device_, ssao_framebuffers_[frame_i], nullptr);
+    vkDestroyFramebuffer(device_, hdr_framebuffers_[frame_i], nullptr);
   }
   framebuffers_.clear();
   depthmap_framebuffers_.clear();
   ssao_framebuffers_.clear();
+  hdr_framebuffers_.clear();
 
   // Destroy pipelines and render passes
   vkDestroyPipelineLayout(device_, graphics_pipeline_layout_, nullptr);
@@ -363,8 +365,12 @@ void Application::Renderer::DestroySwapchain() {
   vkDestroyPipeline(device_, depthmap_pipeline_, nullptr);
   vkDestroyPipelineLayout(device_, ssao_pipeline_layout_, nullptr);
   vkDestroyPipeline(device_, ssao_pipeline_, nullptr);
+  vkDestroyPipelineLayout(device_, hdr_pipeline_layout_, nullptr);
+  vkDestroyPipeline(device_, hdr_pipeline_, nullptr);
   vkDestroyRenderPass(device_, render_pass_, nullptr);
   vkDestroyRenderPass(device_, depthmap_render_pass_, nullptr);
+  vkDestroyRenderPass(device_, ssao_render_pass_, nullptr);
+  vkDestroyRenderPass(device_, hdr_render_pass_, nullptr);
 
   // Destroy resources
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
@@ -375,6 +381,9 @@ void Application::Renderer::DestroySwapchain() {
     vkFreeMemory(device_, ssao_memory_[frame_i], nullptr);
     vkDestroyImage(device_, ssao_images_[frame_i], nullptr);
     vkDestroyImageView(device_, swapchain_image_views_[frame_i], nullptr);
+    vkDestroyImageView(device_, hdr_image_views_[frame_i], nullptr);
+    vkFreeMemory(device_, hdr_memory_[frame_i], nullptr);
+    vkDestroyImage(device_, hdr_images_[frame_i], nullptr);
   }
   vkDestroyImageView(device_, ssn_image_view_, nullptr);
   vkFreeMemory(device_, ssn_memory_, nullptr);
@@ -385,6 +394,9 @@ void Application::Renderer::DestroySwapchain() {
   ssao_memory_.clear();
   ssao_image_views_.clear();
   ssao_images_.clear();
+  hdr_image_views_.clear();
+  hdr_memory_.clear();
+  hdr_images_.clear();
 
   vkDestroySwapchainKHR(device_, swapchain_, nullptr);
   swapchain_ = VK_NULL_HANDLE;
@@ -394,6 +406,7 @@ void Application::Renderer::RecreateSwapchain() {
   CreateSwapchain();
   CreateDepthResources();
   CreateSsaoResources();
+  CreateHdrResources();
   CreateRenderPasses(false);
   CreatePipelines(false);
   CreateFramebuffers(false);
@@ -417,18 +430,21 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateSkyboxPipeline();
   CreateDepthmapPipeline();
   CreateSsaoPipeline();
+  CreateHdrPipeline();
   if (include_fixed_size) CreateShadowmapPipeline();
 }
 void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
   CreateGraphicsRenderPass();
   CreateDepthmapRenderPass();
   CreateSsaoRenderPass();
+  CreateHdrRenderPass();
   if(include_fixed_size) CreateShadowmapRenderPass();
 }
 void Application::Renderer::CreateFramebuffers(bool include_fixed_size) {
   CreateGraphicsFramebuffers();
   CreateDepthmapFramebuffers();
   CreateSsaoFramebuffers();
+  CreateHdrFramebuffers();
   if (include_fixed_size) CreateDirectionalShadowmapFramebuffers();
 }
 VkShaderModule Application::Renderer::CreateShaderModule(
@@ -536,14 +552,14 @@ void Application::Renderer::CreateSyncObjects() {
 }
 void Application::Renderer::CreateGraphicsRenderPass() {
   VkAttachmentDescription color_attachment{};
-  color_attachment.format = swapchain_image_format_;
+  color_attachment.format = hdr_format_;
   color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
   color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  color_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
   VkAttachmentDescription depth_attachment{};
   depth_attachment.format = depth_format_;
@@ -572,17 +588,27 @@ void Application::Renderer::CreateGraphicsRenderPass() {
   subpass.pColorAttachments = &color_attachment_ref;
   subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
-  VkSubpassDependency dependency{};
-  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-  dependency.dstSubpass = 0;
-  dependency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-  dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+  VkSubpassDependency dependency0{};
+  dependency0.srcSubpass = VK_SUBPASS_EXTERNAL;
+  dependency0.dstSubpass = 0;
+  dependency0.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependency0.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
                              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-  dependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-  dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+  dependency0.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  dependency0.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+  dependency0.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+  VkSubpassDependency dependency1{};
+  dependency1.srcSubpass = 0;
+  dependency1.dstSubpass = VK_SUBPASS_EXTERNAL;
+  dependency1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  dependency1.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependency1.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency1.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+  VkSubpassDependency dependencies[] = {dependency0, dependency1};
 
   std::array<VkAttachmentDescription, 2> attachments = {color_attachment,depth_attachment};
   VkRenderPassCreateInfo render_pass_ci{};
@@ -591,8 +617,8 @@ void Application::Renderer::CreateGraphicsRenderPass() {
   render_pass_ci.pAttachments = attachments.data();
   render_pass_ci.subpassCount = 1;
   render_pass_ci.pSubpasses = &subpass;
-  render_pass_ci.dependencyCount = 1;
-  render_pass_ci.pDependencies = &dependency;
+  render_pass_ci.dependencyCount = 2;
+  render_pass_ci.pDependencies = dependencies;
 
   VkResult create_result = vkCreateRenderPass(
       device_, &render_pass_ci, nullptr, &render_pass_);
@@ -795,7 +821,7 @@ void Application::Renderer::CreateGraphicsFramebuffers() {
   framebuffers_.resize(frame_count_);
 
   for (size_t i = 0; i < frame_count_; i++) {
-    std::array<VkImageView, 2> attachments = {swapchain_image_views_[i], depth_image_views_[i]};
+    std::array<VkImageView, 2> attachments = {hdr_image_views_[i], depth_image_views_[i]};
 
     VkFramebufferCreateInfo framebuffer_ci{};
     framebuffer_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

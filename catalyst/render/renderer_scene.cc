@@ -490,6 +490,15 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
     DebugDrawScene(image_i);
   }
   vkCmdEndRenderPass(cmd);
+  
+  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          hdr_pipeline_layout_, 0, 1,
+                          &hdr_descriptor_sets_[image_i], 0, nullptr);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, hdr_pipeline_);
+  vkCmdBindVertexBuffers(cmd, 0, 1, &skybox_vertex_buffer_, vertex_offsets);
+  BeginHdrRenderPass(cmd, image_i);
+  vkCmdDraw(cmd, 6, 1, 0, 0);
+  vkCmdEndRenderPass(cmd);
 }
 void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayout& layout,
                                             SceneDrawDetails& details,

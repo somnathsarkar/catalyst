@@ -151,8 +151,6 @@ void main() {
         }
         currentColor+=(1.0f-in_shadow)*((f_spec+f_diff)*vec3(light.color)*mu_i);
     }
-    // Gamma correction
-    vec3 gamma_correction = vec3(1.0f/2.2f);
-    currentColor = pow(currentColor,gamma_correction);
+    // Pass non-gamma corrected values to HDR framebuffer
     outColor = vec4(currentColor,1.0f);
 }

@@ -107,6 +107,35 @@ void Application::Renderer::CreateDescriptorSetLayout() {
       device_, &layout_ci, nullptr, &ssao_descriptor_set_layout_);
   ASSERT(create_result == VK_SUCCESS,
          "Failed to create SSAO descriptor set layout!");
+
+  // HDR Descriptor Layout
+  VkDescriptorSetLayoutBinding hdr_color_binding{};
+  hdr_color_binding.binding = 0;
+  hdr_color_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  hdr_color_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  hdr_color_binding.descriptorCount = 1;
+  hdr_color_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding hdr_illuminance_binding{};
+  hdr_illuminance_binding.binding = 1;
+  hdr_illuminance_binding.descriptorType =
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  hdr_illuminance_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  hdr_illuminance_binding.descriptorCount = 1;
+  hdr_illuminance_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding hdr_bindings[] = {hdr_color_binding,
+                                           hdr_illuminance_binding};
+
+  layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  layout_ci.pNext = nullptr;
+  layout_ci.flags = 0;
+  layout_ci.bindingCount = 2;
+  layout_ci.pBindings = hdr_bindings;
+  create_result = vkCreateDescriptorSetLayout(device_, &layout_ci, nullptr,
+                                              &hdr_descriptor_set_layout_);
+  ASSERT(create_result == VK_SUCCESS,
+         "Failed to create HDR descriptor set layout!");
 }
 void Application::Renderer::CreateDescriptorPool() {
   uint32_t frame_count = frame_count_;
@@ -118,14 +147,14 @@ void Application::Renderer::CreateDescriptorPool() {
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
       frame_count * (Scene::kMaxDirectionalLights + Scene::kMaxTextures +
-                     Scene::kMaxCubemaps + 3);
+                     Scene::kMaxCubemaps + 5);
   VkDescriptorPoolSize pool_sizes[] = {uniform_size, sampler_size};
 
   VkDescriptorPoolCreateInfo pool_ci{};
   pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   pool_ci.pNext = nullptr;
   pool_ci.flags = 0;
-  pool_ci.maxSets = frame_count*2;
+  pool_ci.maxSets = frame_count*3;
   pool_ci.poolSizeCount = 2;
   pool_ci.pPoolSizes = pool_sizes;
   VkResult create_result =
@@ -155,6 +184,15 @@ void Application::Renderer::CreateDescriptorSets() {
   alloc_result =
       vkAllocateDescriptorSets(device_, &set_ai, ssao_descriptor_sets_.data());
   ASSERT(alloc_result == VK_SUCCESS, "Failed to create SSAO descriptor set!");
+
+  layouts.clear();
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
+    layouts.push_back(hdr_descriptor_set_layout_);
+  set_ai.pSetLayouts = layouts.data();
+  hdr_descriptor_sets_.resize(frame_count_);
+  alloc_result =
+      vkAllocateDescriptorSets(device_, &set_ai, hdr_descriptor_sets_.data());
+  ASSERT(alloc_result == VK_SUCCESS, "Failed to create HDR descriptor set!");
 }
 
 void Application::Renderer::WriteFixedSizeDescriptorSets() {
@@ -368,6 +406,26 @@ void Application::Renderer::WriteResizeableDescriptorSets() {
       writes[frame_i].descriptorType =
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
       writes[frame_i].pBufferInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
+  // HDR: Input Color Image
+  {
+    std::vector<VkDescriptorImageInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].sampler = texture_sampler_;
+      infos[frame_i].imageView = hdr_image_views_[frame_i];
+      infos[frame_i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = hdr_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 0;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writes[frame_i].pImageInfo = &infos[frame_i];
     }
     vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
   }

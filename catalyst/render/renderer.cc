@@ -26,6 +26,7 @@ void Application::Renderer::StartUp() {
   // Resizeable resources
   CreateSwapchain();
   CreateDepthResources();
+  CreateHdrResources();
 
   CreateCommandPool();
   CreateCommandBuffers();
