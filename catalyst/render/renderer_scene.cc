@@ -490,6 +490,9 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
     DebugDrawScene(image_i);
   }
   vkCmdEndRenderPass(cmd);
+
+  // Calculate Average Illuminance
+  CalculateAverageIlluminance(cmd, image_i);
   
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           hdr_pipeline_layout_, 0, 1,

@@ -384,6 +384,10 @@ void Application::Renderer::DestroySwapchain() {
     vkDestroyImageView(device_, hdr_image_views_[frame_i], nullptr);
     vkFreeMemory(device_, hdr_memory_[frame_i], nullptr);
     vkDestroyImage(device_, hdr_images_[frame_i], nullptr);
+    for (uint32_t buff_i = 0; buff_i < 2; buff_i++) {
+      vkFreeMemory(device_, illuminance_memory_[frame_i][buff_i], nullptr);
+      vkDestroyBuffer(device_, illuminance_buffers_[frame_i][buff_i], nullptr);
+    }
   }
   vkDestroyImageView(device_, ssn_image_view_, nullptr);
   vkFreeMemory(device_, ssn_memory_, nullptr);
@@ -407,6 +411,7 @@ void Application::Renderer::RecreateSwapchain() {
   CreateDepthResources();
   CreateSsaoResources();
   CreateHdrResources();
+  CreateIlluminanceResources();
   CreateRenderPasses(false);
   CreatePipelines(false);
   CreateFramebuffers(false);
@@ -431,7 +436,10 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateDepthmapPipeline();
   CreateSsaoPipeline();
   CreateHdrPipeline();
-  if (include_fixed_size) CreateShadowmapPipeline();
+  if (include_fixed_size) {
+    CreateShadowmapPipeline();
+    CreateIlluminancePipeline();
+  }
 }
 void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
   CreateGraphicsRenderPass();
@@ -559,7 +567,7 @@ void Application::Renderer::CreateGraphicsRenderPass() {
   color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  color_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  color_attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
   VkAttachmentDescription depth_attachment{};
   depth_attachment.format = depth_format_;
@@ -604,9 +612,9 @@ void Application::Renderer::CreateGraphicsRenderPass() {
   dependency1.srcSubpass = 0;
   dependency1.dstSubpass = VK_SUBPASS_EXTERNAL;
   dependency1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-  dependency1.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependency1.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
   dependency1.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  dependency1.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  dependency1.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
   VkSubpassDependency dependencies[] = {dependency0, dependency1};
 

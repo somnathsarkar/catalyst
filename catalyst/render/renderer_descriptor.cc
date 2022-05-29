@@ -136,6 +136,33 @@ void Application::Renderer::CreateDescriptorSetLayout() {
                                               &hdr_descriptor_set_layout_);
   ASSERT(create_result == VK_SUCCESS,
          "Failed to create HDR descriptor set layout!");
+
+  // Illuminance Descriptor Layout
+  VkDescriptorSetLayoutBinding ill_0_binding{};
+  ill_0_binding.binding = 0;
+  ill_0_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  ill_0_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+  ill_0_binding.descriptorCount = 1;
+  ill_0_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding ill_1_binding{};
+  ill_1_binding.binding = 1;
+  ill_1_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  ill_1_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+  ill_1_binding.descriptorCount = 1;
+  ill_1_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding ill_bindings[] = {ill_0_binding, ill_1_binding};
+
+  layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  layout_ci.pNext = nullptr;
+  layout_ci.flags = 0;
+  layout_ci.bindingCount = 2;
+  layout_ci.pBindings = ill_bindings;
+  create_result = vkCreateDescriptorSetLayout(device_, &layout_ci, nullptr,
+                                              &illuminance_descriptor_set_layout_);
+  ASSERT(create_result == VK_SUCCESS,
+         "Failed to create illuminance descriptor set layout!");
 }
 void Application::Renderer::CreateDescriptorPool() {
   uint32_t frame_count = frame_count_;
@@ -148,14 +175,17 @@ void Application::Renderer::CreateDescriptorPool() {
   sampler_size.descriptorCount =
       frame_count * (Scene::kMaxDirectionalLights + Scene::kMaxTextures +
                      Scene::kMaxCubemaps + 5);
-  VkDescriptorPoolSize pool_sizes[] = {uniform_size, sampler_size};
+  VkDescriptorPoolSize storage_size;
+  storage_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  storage_size.descriptorCount = (frame_count * 2);
+  VkDescriptorPoolSize pool_sizes[] = {uniform_size, sampler_size, storage_size};
 
   VkDescriptorPoolCreateInfo pool_ci{};
   pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   pool_ci.pNext = nullptr;
   pool_ci.flags = 0;
-  pool_ci.maxSets = frame_count*3;
-  pool_ci.poolSizeCount = 2;
+  pool_ci.maxSets = frame_count*4;
+  pool_ci.poolSizeCount = 3;
   pool_ci.pPoolSizes = pool_sizes;
   VkResult create_result =
       vkCreateDescriptorPool(device_, &pool_ci, nullptr, &descriptor_pool_);
@@ -193,6 +223,15 @@ void Application::Renderer::CreateDescriptorSets() {
   alloc_result =
       vkAllocateDescriptorSets(device_, &set_ai, hdr_descriptor_sets_.data());
   ASSERT(alloc_result == VK_SUCCESS, "Failed to create HDR descriptor set!");
+
+  layouts.clear();
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
+    layouts.push_back(illuminance_descriptor_set_layout_);
+  set_ai.pSetLayouts = layouts.data();
+  illuminance_descriptor_sets_.resize(frame_count_);
+  alloc_result =
+      vkAllocateDescriptorSets(device_, &set_ai, illuminance_descriptor_sets_.data());
+  ASSERT(alloc_result == VK_SUCCESS, "Failed to create illuminance descriptor set!");
 }
 
 void Application::Renderer::WriteFixedSizeDescriptorSets() {
@@ -428,6 +467,28 @@ void Application::Renderer::WriteResizeableDescriptorSets() {
       writes[frame_i].pImageInfo = &infos[frame_i];
     }
     vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
+  // Illuminance: Storage Buffer 0 + 1
+  {
+    std::vector<VkDescriptorBufferInfo> infos(frame_count_*2);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_*2);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      for (uint32_t buff_i = 0; buff_i < 2; buff_i++) {
+        uint32_t i = frame_i * 2 + buff_i;
+        infos[i].buffer = illuminance_buffers_[frame_i][buff_i];
+        infos[i].offset = 0;
+        infos[i].range = VK_WHOLE_SIZE;
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].pNext = nullptr;
+        writes[i].dstSet = illuminance_descriptor_sets_[frame_i];
+        writes[i].dstBinding = buff_i;
+        writes[i].dstArrayElement = 0;
+        writes[i].descriptorCount = 1;
+        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        writes[i].pBufferInfo = &infos[i];
+      }
+    }
+    vkUpdateDescriptorSets(device_, frame_count_*2, writes.data(), 0, nullptr);
   }
 }
 }  // namespace catalyst

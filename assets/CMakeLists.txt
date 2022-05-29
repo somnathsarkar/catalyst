@@ -13,6 +13,12 @@ function(add_shader_pair SHADER_NAME)
 	add_shader("${SHADER_NAME}.frag")
 endfunction()
 
+function(target_shaders TARGET)
+	foreach(SHADER ${ARGN})
+		add_dependencies(${TARGET} "${SHADER}")
+	endforeach()
+endfunction()
+
 function(target_shader_pairs TARGET)
 	foreach(SHADER_PAIR ${ARGN})
 		add_dependencies(${TARGET} "${SHADER_PAIR}.vert" "${SHADER_PAIR}.frag")
@@ -73,6 +79,8 @@ add_shader_pair("depthmap")
 add_shader_pair("skybox")
 add_shader_pair("ssao")
 add_shader_pair("hdr")
+
+add_shader("log_illuminance.comp")
 
 add_model("bun_zipper.obj")
 add_model("teapot.obj")

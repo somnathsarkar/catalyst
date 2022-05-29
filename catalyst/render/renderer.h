@@ -34,11 +34,23 @@ class Application :: Renderer {
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> present_modes;
   };
+  struct ComputeDetails {
+    uint32_t subgroup_size;
+    uint32_t workgroup_size;
+  };
   struct PushConstantData {
     glm::mat4 model_to_world_transform;
     glm::mat4 world_to_view_transform;
     glm::mat4 view_to_clip_transform;
     uint32_t material_id;
+  };
+  struct ComputePushConstantData {
+    int input_dim;
+    bool input0;
+  };
+  struct HdrPushConstantData {
+    glm::vec4 illumination_sum;
+    int num_pixels;
   };
   struct DirectionalLight {
     alignas(16) glm::mat4 world_to_light_transform;
@@ -208,6 +220,14 @@ class Application :: Renderer {
   VkQueue transfer_queue_;
   VkQueue present_queue_;
 
+  ComputeDetails compute_details_;
+  std::vector<std::vector<VkBuffer>> illuminance_buffers_;
+  std::vector<std::vector<VkDeviceMemory>> illuminance_memory_;
+  VkPipelineLayout illuminance_pipeline_layout_;
+  VkPipeline illuminance_pipeline_;
+  VkDescriptorSetLayout illuminance_descriptor_set_layout_;
+  std::vector<VkDescriptorSet> illuminance_descriptor_sets_;
+
   void CreateInstance();
 
   // Device Creation: rendermanager_device.cc
@@ -216,6 +236,7 @@ class Application :: Renderer {
   bool CheckPhysicalDeviceExtensionSupport(VkPhysicalDevice physical_device);
   QueueFamilyIndexCollection FindQueueFamilyIndices(
       VkPhysicalDevice physical_device);
+  void CheckComputeDetails();
   void CreateLogicalDevice();
   void CreateDevice();
 
@@ -284,6 +305,11 @@ class Application :: Renderer {
   void CreateHdrPipeline();
   void CreateHdrFramebuffers();
   void BeginHdrRenderPass(VkCommandBuffer& cmd, uint32_t swapchain_image_i);
+
+  // Compute Pipeline - Illuminance
+  void CreateIlluminanceResources();
+  void CreateIlluminancePipeline();
+  void CalculateAverageIlluminance(VkCommandBuffer& cmd, uint32_t swapchain_image_i);
 
   // Needed for each window, can be in rendermanager_surface.cc
   void CreateCommandPool();

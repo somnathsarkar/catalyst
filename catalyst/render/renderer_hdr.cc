@@ -9,7 +9,9 @@ void Application::Renderer::CreateHdrResources() {
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     CreateImage(hdr_images_[frame_i], hdr_memory_[frame_i], 0, hdr_format_,
                 {swapchain_extent_.width, swapchain_extent_.height, 1}, 1, 1,
-                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                    VK_IMAGE_USAGE_SAMPLED_BIT |
+                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     CreateImageView(hdr_image_views_[frame_i], hdr_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, hdr_format_,
