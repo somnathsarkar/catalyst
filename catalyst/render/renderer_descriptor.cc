@@ -116,16 +116,16 @@ void Application::Renderer::CreateDescriptorSetLayout() {
   hdr_color_binding.descriptorCount = 1;
   hdr_color_binding.pImmutableSamplers = nullptr;
 
-  VkDescriptorSetLayoutBinding hdr_illuminance_binding{};
-  hdr_illuminance_binding.binding = 1;
-  hdr_illuminance_binding.descriptorType =
-      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  hdr_illuminance_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-  hdr_illuminance_binding.descriptorCount = 1;
-  hdr_illuminance_binding.pImmutableSamplers = nullptr;
+  VkDescriptorSetLayoutBinding hdr_tone_binding{};
+  hdr_tone_binding.binding = 1;
+  hdr_tone_binding.descriptorType =
+      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  hdr_tone_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  hdr_tone_binding.descriptorCount = 1;
+  hdr_tone_binding.pImmutableSamplers = nullptr;
 
-  VkDescriptorSetLayoutBinding hdr_bindings[] = {hdr_color_binding,
-                                           hdr_illuminance_binding};
+  VkDescriptorSetLayoutBinding hdr_bindings[] = {
+      hdr_color_binding, hdr_tone_binding};
 
   layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   layout_ci.pNext = nullptr;
@@ -174,7 +174,7 @@ void Application::Renderer::CreateDescriptorPool() {
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
       frame_count * (Scene::kMaxDirectionalLights + Scene::kMaxTextures +
-                     Scene::kMaxCubemaps + 5);
+                     Scene::kMaxCubemaps + 4);
   VkDescriptorPoolSize storage_size;
   storage_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
   storage_size.descriptorCount = (frame_count * 2);
@@ -365,6 +365,7 @@ void Application::Renderer::WriteFixedSizeDescriptorSets() {
     set_wi.pBufferInfo = &set_bis[frame_i];
   }
   vkUpdateDescriptorSets(device_, frame_count_, set_wis.data(), 0, nullptr);
+
 }
 
 void Application::Renderer::WriteResizeableDescriptorSets() {
@@ -465,6 +466,25 @@ void Application::Renderer::WriteResizeableDescriptorSets() {
       writes[frame_i].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writes[frame_i].pImageInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
+  // HDR: Tonemapping Uniform
+  {
+    std::vector<VkDescriptorBufferInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].buffer = hdr_tonemapping_buffers_[frame_i];
+      infos[frame_i].offset = 0;
+      infos[frame_i].range = VK_WHOLE_SIZE;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = hdr_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 1;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writes[frame_i].pBufferInfo = &infos[frame_i];
     }
     vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
   }

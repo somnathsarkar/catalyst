@@ -6,6 +6,8 @@ void Application::Renderer::CreateHdrResources() {
   hdr_images_.resize(frame_count_);
   hdr_image_views_.resize(frame_count_);
   hdr_memory_.resize(frame_count_);
+  hdr_tonemapping_buffers_.resize(frame_count_);
+  hdr_tonemapping_memory_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     CreateImage(hdr_images_[frame_i], hdr_memory_[frame_i], 0, hdr_format_,
                 {swapchain_extent_.width, swapchain_extent_.height, 1}, 1, 1,
@@ -16,6 +18,12 @@ void Application::Renderer::CreateHdrResources() {
     CreateImageView(hdr_image_views_[frame_i], hdr_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, hdr_format_,
                     VK_IMAGE_ASPECT_COLOR_BIT);
+    CreateBuffer(
+        hdr_tonemapping_buffers_[frame_i], hdr_tonemapping_memory_[frame_i],
+        sizeof(TonemappingUniform),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
 }
 void Application::Renderer::CreateHdrRenderPass() {
@@ -184,17 +192,12 @@ void Application::Renderer::CreateHdrPipeline() {
   color_blend_state.blendConstants[2] = 0.0f;
   color_blend_state.blendConstants[3] = 0.0f;
 
-  VkPushConstantRange vertex_push{};
-  vertex_push.offset = 0;
-  vertex_push.size = sizeof(PushConstantData);
-  vertex_push.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
   VkPipelineLayoutCreateInfo layout_ci{};
   layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   layout_ci.pNext = nullptr;
   layout_ci.flags = 0;
-  layout_ci.pushConstantRangeCount = 1;
-  layout_ci.pPushConstantRanges = &vertex_push;
+  layout_ci.pushConstantRangeCount = 0;
+  layout_ci.pPushConstantRanges = nullptr;
   layout_ci.setLayoutCount = 1;
   layout_ci.pSetLayouts = &hdr_descriptor_set_layout_;
   VkResult result = vkCreatePipelineLayout(device_, &layout_ci, nullptr,

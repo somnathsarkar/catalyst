@@ -1,12 +1,5 @@
 #version 450
 
-layout(push_constant) uniform constants{
-    mat4 model_to_world_transform;
-    mat4 world_to_view_transform;
-    mat4 view_to_clip_transform;
-    uint material_id;
-}push_constants;
-
 layout(location = 0) in vec3 clipPos;
 
 layout(location = 0) out vec2 screenPos;

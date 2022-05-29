@@ -159,7 +159,8 @@ void Application::Renderer::LateShutDown() {
   vkDestroyPipelineLayout(device_, shadowmap_pipeline_layout_, nullptr);
   vkDestroyPipeline(device_, shadowmap_pipeline_, nullptr);
   vkDestroyPipelineLayout(device_, illuminance_pipeline_layout_, nullptr);
-  vkDestroyPipeline(device_, illuminance_pipeline_, nullptr);
+  vkDestroyPipeline(device_, log_illuminance_pipeline_, nullptr);
+  vkDestroyPipeline(device_, reduce_illuminance_pipeline_, nullptr);
 
   // Destroy Render passes
   vkDestroyRenderPass(device_, shadowmap_render_pass_, nullptr);

@@ -384,6 +384,8 @@ void Application::Renderer::DestroySwapchain() {
     vkDestroyImageView(device_, hdr_image_views_[frame_i], nullptr);
     vkFreeMemory(device_, hdr_memory_[frame_i], nullptr);
     vkDestroyImage(device_, hdr_images_[frame_i], nullptr);
+    vkFreeMemory(device_, hdr_tonemapping_memory_[frame_i], nullptr);
+    vkDestroyBuffer(device_, hdr_tonemapping_buffers_[frame_i], nullptr);
     for (uint32_t buff_i = 0; buff_i < 2; buff_i++) {
       vkFreeMemory(device_, illuminance_memory_[frame_i][buff_i], nullptr);
       vkDestroyBuffer(device_, illuminance_buffers_[frame_i][buff_i], nullptr);
@@ -401,6 +403,8 @@ void Application::Renderer::DestroySwapchain() {
   hdr_image_views_.clear();
   hdr_memory_.clear();
   hdr_images_.clear();
+  hdr_tonemapping_buffers_.clear();
+  hdr_tonemapping_memory_.clear();
 
   vkDestroySwapchainKHR(device_, swapchain_, nullptr);
   swapchain_ = VK_NULL_HANDLE;
@@ -438,7 +442,7 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateHdrPipeline();
   if (include_fixed_size) {
     CreateShadowmapPipeline();
-    CreateIlluminancePipeline();
+    CreateIlluminancePipelines();
   }
 }
 void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {

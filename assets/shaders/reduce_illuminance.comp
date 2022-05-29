@@ -1,0 +1,57 @@
+#version 450
+
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+layout (constant_id = 0) const int kSubgroupSize = 32;
+layout (constant_id = 1) const int kWorkgroupSize = 1024;
+
+layout(local_size_x_id = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstantType{
+	// Dimensions of Input Array
+	int input_dim;
+	// true if Input is in binding 0 and Output is in binding 1
+	// false if Input is in binding 1 and Output is in binding 0
+	bool input0;
+}push_constants;
+
+layout(set = 0, binding = 0) buffer Buffer0{
+	float illuminance0[];
+};
+
+layout(set = 0, binding = 1) buffer Buffer1{
+	float illuminance1[];
+};
+
+shared float shared_data[kWorkgroupSize/kSubgroupSize];
+
+void main(){
+	float value = 0.0f;
+	if(gl_GlobalInvocationID.x < push_constants.input_dim){
+		if(push_constants.input0){
+			value = illuminance0[gl_GlobalInvocationID.x];
+		}else{
+			value = illuminance1[gl_GlobalInvocationID.x];
+		}
+	}
+	value = subgroupAdd(value);
+	if(gl_SubgroupInvocationID == 0){
+		shared_data[gl_SubgroupID] = value;
+	}
+	
+	memoryBarrierShared();
+	barrier();
+
+	if(gl_SubgroupID == 0){
+		value = gl_SubgroupInvocationID < kWorkgroupSize/kSubgroupSize ? shared_data[gl_SubgroupInvocationID.x] : 0;
+		value = subgroupAdd(value);
+		if(gl_SubgroupInvocationID == 0){
+			if(push_constants.input0){
+				illuminance1[gl_WorkGroupID.x] = value;
+			}else{
+				illuminance0[gl_WorkGroupID.x] = value;
+			}
+		}
+	}
+}

@@ -51,7 +51,7 @@ target_sources(catalyst PRIVATE
 "filesystem/importer.cc")
 
 target_shader_pairs(catalyst "phong" "debugdraw" "depthmap" "pbr" "skybox" "ssao" "hdr")
-target_shaders(catalyst "log_illuminance.comp")
+target_shaders(catalyst "log_illuminance.comp" "reduce_illuminance.comp")
 target_models(catalyst "bun_zipper.obj" "teapot.obj")
 target_textures(catalyst "black.png" "white.png")
 target_cubemaps(catalyst "meadow/specular" "meadow/diffuse")

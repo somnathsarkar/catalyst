@@ -48,10 +48,6 @@ class Application :: Renderer {
     int input_dim;
     bool input0;
   };
-  struct HdrPushConstantData {
-    glm::vec4 illumination_sum;
-    int num_pixels;
-  };
   struct DirectionalLight {
     alignas(16) glm::mat4 world_to_light_transform;
     alignas(16) glm::mat4 light_to_clip_transform;
@@ -87,6 +83,11 @@ class Application :: Renderer {
     int diffuse_cubemap_id;
     float specular_intensity;
     float diffuse_intensity;
+  };
+  struct TonemappingUniform {
+    float log_illuminance_sum;
+    uint32_t num_pixels;
+    float _pad[2];
   };
   struct SceneDrawDetails {
     PushConstantData push_constants;
@@ -213,6 +214,8 @@ class Application :: Renderer {
   VkBuffer skybox_vertex_buffer_;
   VkDeviceMemory ssao_sample_memory_;
   VkBuffer ssao_sample_uniform_;
+  std::vector<VkDeviceMemory> hdr_tonemapping_memory_;
+  std::vector<VkBuffer> hdr_tonemapping_buffers_;
 
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
@@ -224,7 +227,8 @@ class Application :: Renderer {
   std::vector<std::vector<VkBuffer>> illuminance_buffers_;
   std::vector<std::vector<VkDeviceMemory>> illuminance_memory_;
   VkPipelineLayout illuminance_pipeline_layout_;
-  VkPipeline illuminance_pipeline_;
+  VkPipeline log_illuminance_pipeline_;
+  VkPipeline reduce_illuminance_pipeline_;
   VkDescriptorSetLayout illuminance_descriptor_set_layout_;
   std::vector<VkDescriptorSet> illuminance_descriptor_sets_;
 
@@ -308,8 +312,8 @@ class Application :: Renderer {
 
   // Compute Pipeline - Illuminance
   void CreateIlluminanceResources();
-  void CreateIlluminancePipeline();
-  void CalculateAverageIlluminance(VkCommandBuffer& cmd, uint32_t swapchain_image_i);
+  void CreateIlluminancePipelines();
+  void ComputeTonemapping(VkCommandBuffer& cmd, uint32_t swapchain_image_i, SceneDrawDetails& details);
 
   // Needed for each window, can be in rendermanager_surface.cc
   void CreateCommandPool();
