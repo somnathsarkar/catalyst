@@ -34,13 +34,29 @@ void Application::Renderer::CreateHdrRenderPass() {
   color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+  color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+  VkAttachmentDescription depth_attachment{};
+  depth_attachment.flags = 0;
+  depth_attachment.format = depth_format_;
+  depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+  depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depth_attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  depth_attachment.finalLayout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
   VkAttachmentReference color_ref{};
   color_ref.attachment = 0;
   color_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference depth_ref{};
+  depth_ref.attachment = 1;
+  depth_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
   VkSubpassDescription subpass{};
   subpass.flags = 0;
@@ -50,16 +66,18 @@ void Application::Renderer::CreateHdrRenderPass() {
   subpass.colorAttachmentCount = 1;
   subpass.pColorAttachments = &color_ref;
   subpass.pResolveAttachments = nullptr;
-  subpass.pDepthStencilAttachment = nullptr;
+  subpass.pDepthStencilAttachment = &depth_ref;
   subpass.preserveAttachmentCount = 0;
   subpass.pPreserveAttachments = nullptr;
+
+  VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
 
   VkRenderPassCreateInfo render_pass_ci{};
   render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   render_pass_ci.pNext = nullptr;
   render_pass_ci.flags = 0;
-  render_pass_ci.attachmentCount = 1;
-  render_pass_ci.pAttachments = &color_attachment;
+  render_pass_ci.attachmentCount = 2;
+  render_pass_ci.pAttachments = attachments;
   render_pass_ci.subpassCount = 1;
   render_pass_ci.pSubpasses = &subpass;
   render_pass_ci.dependencyCount = 0;
@@ -231,13 +249,15 @@ void Application::Renderer::CreateHdrFramebuffers() {
   hdr_framebuffers_.resize(frame_count_);
   VkFramebufferCreateInfo framebuffer_ci{};
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    VkImageView attachments[] = {swapchain_image_views_[frame_i],
+                                 depth_image_views_[frame_i]};
     VkFramebufferCreateInfo framebuffer_ci{};
     framebuffer_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebuffer_ci.pNext = nullptr;
     framebuffer_ci.flags = 0;
     framebuffer_ci.renderPass = hdr_render_pass_;
-    framebuffer_ci.attachmentCount = 1;
-    framebuffer_ci.pAttachments = &swapchain_image_views_[frame_i];
+    framebuffer_ci.attachmentCount = 2;
+    framebuffer_ci.pAttachments = attachments;
     framebuffer_ci.width = swapchain_extent_.width;
     framebuffer_ci.height = swapchain_extent_.height;
     framebuffer_ci.layers = 1;
@@ -247,9 +267,13 @@ void Application::Renderer::CreateHdrFramebuffers() {
   }
 }
 void Application::Renderer::BeginHdrRenderPass(VkCommandBuffer& cmd,
-                                                uint32_t swapchain_image_i) {
+                                               uint32_t swapchain_image_i) {
   VkClearValue color_clear;
-  color_clear.color.float32[0] = 0.0f;
+  color_clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+  VkClearValue depth_clear;
+  depth_clear.depthStencil.depth = 1.0f;
+  depth_clear.depthStencil.stencil = 0;
+  VkClearValue clear_values[] = {color_clear, depth_clear};
   VkRenderPassBeginInfo render_pass_bi{};
   render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   render_pass_bi.pNext = nullptr;
@@ -258,8 +282,8 @@ void Application::Renderer::BeginHdrRenderPass(VkCommandBuffer& cmd,
   render_pass_bi.renderArea.extent = swapchain_extent_;
   render_pass_bi.renderArea.offset.x = 0;
   render_pass_bi.renderArea.offset.y = 0;
-  render_pass_bi.clearValueCount = 1;
-  render_pass_bi.pClearValues = &color_clear;
+  render_pass_bi.clearValueCount = 2;
+  render_pass_bi.pClearValues = clear_values;
   vkCmdBeginRenderPass(cmd, &render_pass_bi, VK_SUBPASS_CONTENTS_INLINE);
 }
 }

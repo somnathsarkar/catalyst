@@ -165,6 +165,7 @@ class Application :: Renderer {
   VkPipeline ssao_pipeline_;
   VkPipeline hdr_pipeline_;
   VkRenderPass render_pass_;
+  VkRenderPass debugdraw_render_pass_;
   VkRenderPass shadowmap_render_pass_;
   VkRenderPass depthmap_render_pass_;
   VkRenderPass ssao_render_pass_;
@@ -279,8 +280,11 @@ class Application :: Renderer {
 
   // Rendering Pipeline - Debug Draw
   void CreateDebugDrawResources();
+  void CreateDebugDrawRenderPass();
   void CreateDebugDrawPipeline();
   void CreateDebugDrawLinesPipeline();
+  void BeginDebugDrawRenderPass(VkCommandBuffer& cmd,
+                                uint32_t swapchain_image_i);
 
   // Rendering Pipeline - Shadowmaps
   void CreateShadowmapRenderPass();

@@ -368,6 +368,7 @@ void Application::Renderer::DestroySwapchain() {
   vkDestroyPipelineLayout(device_, hdr_pipeline_layout_, nullptr);
   vkDestroyPipeline(device_, hdr_pipeline_, nullptr);
   vkDestroyRenderPass(device_, render_pass_, nullptr);
+  vkDestroyRenderPass(device_, debugdraw_render_pass_, nullptr);
   vkDestroyRenderPass(device_, depthmap_render_pass_, nullptr);
   vkDestroyRenderPass(device_, ssao_render_pass_, nullptr);
   vkDestroyRenderPass(device_, hdr_render_pass_, nullptr);
@@ -447,6 +448,7 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
 }
 void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
   CreateGraphicsRenderPass();
+  CreateDebugDrawRenderPass();
   CreateDepthmapRenderPass();
   CreateSsaoRenderPass();
   CreateHdrRenderPass();

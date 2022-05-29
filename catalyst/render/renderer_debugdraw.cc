@@ -12,6 +12,67 @@ void Application::Renderer::CreateDebugDrawResources() {
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
 }
+void Application::Renderer::CreateDebugDrawRenderPass() {
+  VkAttachmentDescription color_attachment{};
+  color_attachment.flags = 0;
+  color_attachment.format = swapchain_image_format_;
+  color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+  color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  color_attachment.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+  VkAttachmentDescription depth_attachment{};
+  depth_attachment.flags = 0;
+  depth_attachment.format = depth_format_;
+  depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+  depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depth_attachment.initialLayout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  depth_attachment.finalLayout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference color_ref{};
+  color_ref.attachment = 0;
+  color_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference depth_ref{};
+  depth_ref.attachment = 1;
+  depth_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  VkSubpassDescription subpass{};
+  subpass.flags = 0;
+  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpass.inputAttachmentCount = 0;
+  subpass.pInputAttachments = nullptr;
+  subpass.colorAttachmentCount = 1;
+  subpass.pColorAttachments = &color_ref;
+  subpass.pResolveAttachments = nullptr;
+  subpass.pDepthStencilAttachment = &depth_ref;
+  subpass.preserveAttachmentCount = 0;
+  subpass.pPreserveAttachments = nullptr;
+
+  VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
+
+  VkRenderPassCreateInfo render_pass_ci{};
+  render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  render_pass_ci.pNext = nullptr;
+  render_pass_ci.flags = 0;
+  render_pass_ci.attachmentCount = 2;
+  render_pass_ci.pAttachments = attachments;
+  render_pass_ci.subpassCount = 1;
+  render_pass_ci.pSubpasses = &subpass;
+  render_pass_ci.dependencyCount = 0;
+  render_pass_ci.pDependencies = nullptr;
+  VkResult create_result = vkCreateRenderPass(device_, &render_pass_ci,
+                                              nullptr, &debugdraw_render_pass_);
+  ASSERT(create_result == VK_SUCCESS, "Could not create Debug Draw render pass!");
+}
 void Application::Renderer::CreateDebugDrawPipeline() {
   const std::vector<char> vert_shader_code =
       ReadFile("../assets/shaders/debugdraw.vert.spv");
@@ -189,7 +250,7 @@ void Application::Renderer::CreateDebugDrawPipeline() {
   pipeline_ci.pDepthStencilState = &depth_stencil_state;
   pipeline_ci.pColorBlendState = &color_blend_state;
   pipeline_ci.layout = debugdraw_pipeline_layout_;
-  pipeline_ci.renderPass = render_pass_;
+  pipeline_ci.renderPass = debugdraw_render_pass_;
   pipeline_ci.subpass = 0;
   pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -347,7 +408,7 @@ void Application::Renderer::CreateDebugDrawLinesPipeline() {
   pipeline_ci.pDepthStencilState = &depth_stencil_state;
   pipeline_ci.pColorBlendState = &color_blend_state;
   pipeline_ci.layout = debugdraw_pipeline_layout_;
-  pipeline_ci.renderPass = render_pass_;
+  pipeline_ci.renderPass = debugdraw_render_pass_;
   pipeline_ci.subpass = 0;
   pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -357,5 +418,25 @@ void Application::Renderer::CreateDebugDrawLinesPipeline() {
 
   vkDestroyShaderModule(device_, vert_shader, nullptr);
   vkDestroyShaderModule(device_, frag_shader, nullptr);
+}
+void Application::Renderer::BeginDebugDrawRenderPass(
+    VkCommandBuffer& cmd, uint32_t swapchain_image_i) {
+  VkClearValue color_clear;
+  color_clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+  VkClearValue depth_clear;
+  depth_clear.depthStencil.depth = 1.0f;
+  depth_clear.depthStencil.stencil = 0;
+  VkClearValue clear_values[] = {color_clear, depth_clear};
+  VkRenderPassBeginInfo render_pass_bi{};
+  render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  render_pass_bi.pNext = nullptr;
+  render_pass_bi.renderPass = debugdraw_render_pass_;
+  render_pass_bi.framebuffer = hdr_framebuffers_[swapchain_image_i];
+  render_pass_bi.renderArea.extent = swapchain_extent_;
+  render_pass_bi.renderArea.offset.x = 0;
+  render_pass_bi.renderArea.offset.y = 0;
+  render_pass_bi.clearValueCount = 1;
+  render_pass_bi.pClearValues = clear_values;
+  vkCmdBeginRenderPass(cmd, &render_pass_bi, VK_SUBPASS_CONTENTS_INLINE);
 }
 }  // namespace catalyst

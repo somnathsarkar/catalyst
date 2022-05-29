@@ -486,9 +486,6 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
 
   DrawSceneMeshes(cmd, graphics_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
 
-  if (debug_enabled_) {
-    DebugDrawScene(image_i);
-  }
   vkCmdEndRenderPass(cmd);
 
   // Calculate Exposure
@@ -504,6 +501,11 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
   BeginHdrRenderPass(cmd, image_i);
   vkCmdDraw(cmd, 6, 1, 0, 0);
   vkCmdEndRenderPass(cmd);
+
+  // Debug Draw
+  if (debug_enabled_) {
+    DebugDrawScene(image_i);
+  }
 }
 void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayout& layout,
                                             SceneDrawDetails& details,
@@ -540,6 +542,7 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
 }
 void Application::Renderer::DebugDrawScene(uint32_t image_i) {
   VkCommandBuffer& cmd = command_buffers_[image_i];
+  BeginDebugDrawRenderPass(cmd, image_i);
   SceneDrawDetails dummy_details;
   for (const DebugDrawObject* debugdraw_object : scene_->debugdraw_objects_) {
     switch (debugdraw_object->type_) {
@@ -564,6 +567,7 @@ void Application::Renderer::DebugDrawScene(uint32_t image_i) {
       }
     }
   }
+  vkCmdEndRenderPass(cmd);
 }
 void Application::Renderer::DebugDrawAabb(uint32_t image_i,
                                           const Aabb& aabb) {
