@@ -7,7 +7,8 @@ layout(set = 0, binding = 0) uniform sampler2D inputTexture;
 layout(set = 0, binding = 1) uniform ToneMappingUniformType{
 	float log_illuminance_sum;
 	uint num_pixels;
-	float _pad[2];
+	float exposure_adjustment;
+	float _pad;
 }tonemapping_uniform;
 
 layout(location = 0) in vec2 screenPos;
@@ -19,10 +20,8 @@ vec3 RgbToXyy(vec3 rgb){
 								0.3575761,0.7151522,0.1191920,
 								0.1804375,0.0721750,0.9503041);
 	vec3 xyz = transform_mat*rgb;
-	float y = xyz.y;
 	float den = xyz.x+xyz.y+xyz.z;
-	vec3 xyy = vec3(xyz.x/den,xyz.y/den,0.0f);
-	xyy.z = y;
+	vec3 xyy = vec3(xyz.x/den,xyz.y/den,xyz.y);
 	return xyy;
 }
 
@@ -41,9 +40,9 @@ void main(){
 	float exposure = exp(-tonemapping_uniform.log_illuminance_sum/tonemapping_uniform.num_pixels);
 	vec3 inRgb = texture(inputTexture,screenPos).rgb;
 	vec3 inXyy = RgbToXyy(inRgb);
-	inXyy.z*=exposure;
-	vec3 exposedRgb = XyyToRgb(inXyy);
-	vec3 reinhardColor = exposedRgb/(1.0f+exposedRgb);
+	inXyy.z*=exposure*tonemapping_uniform.exposure_adjustment;
+	inXyy.z = inXyy.z/(1.0f+inXyy.z);
+	vec3 reinhardColor = XyyToRgb(inXyy);
 	vec3 gamma_correction = vec3(1.0f/2.2f);
 	vec3 correctedColor = pow(reinhardColor,gamma_correction);
 	outColor = vec4(correctedColor,1.0f);

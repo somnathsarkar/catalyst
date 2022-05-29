@@ -108,6 +108,19 @@ void EditorWindow::QtWindow::QtResourcePanel::Populate() {
     row_count++;
   }
   treeview_->setModel(treemodel_);
+  for (uint32_t set_i = 0;
+       set_i < static_cast<uint32_t>(scene_->settings_.size()); set_i++) {
+    QStandardItem* item_name = new QStandardItem(
+        QString::fromStdString(scene_->settings_[set_i]->name_));
+    QStandardItem* item_type = new QStandardItem(QString::fromStdString(
+        catalyst::kResourceTypeNames[static_cast<uint32_t>(
+            catalyst::ResourceType::kSettings)]));
+    item_type->setEditable(false);
+    treemodel_->setItem(row_count, 0, item_name);
+    treemodel_->setItem(row_count, 1, item_type);
+    row_count++;
+  }
+  treeview_->setModel(treemodel_);
 }
 catalyst::Resource*
 EditorWindow::QtWindow::QtResourcePanel::ModelIndexToResource(

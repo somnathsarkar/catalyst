@@ -492,6 +492,8 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
   vkCmdEndRenderPass(cmd);
 
   // Calculate Exposure
+  details.tonemap_uniform.exposure_adjustment =
+      scene_->settings_[0]->exposure_adjustment;
   ComputeTonemapping(cmd, image_i, details);
   
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,

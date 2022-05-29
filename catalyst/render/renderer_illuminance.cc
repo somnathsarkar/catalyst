@@ -227,10 +227,10 @@ void Application::Renderer::ComputeTonemapping(VkCommandBuffer& cmd,
                        &buff_barrier2, 0, nullptr);
   // Step 7: Populate Tonemapping Uniform Buffer fields other than Log Illuminance Sum
   void* tonemap_data;
-  TonemappingUniform tonemap_unform{};
-  tonemap_unform.num_pixels = num_pixels;
+  TonemappingUniform tonemap_uniform = details.tonemap_uniform;
+  tonemap_uniform.num_pixels = num_pixels;
   vkMapMemory(device_, hdr_tonemapping_memory_[swapchain_image_i], 0, VK_WHOLE_SIZE, 0, &tonemap_data);
-  memcpy(tonemap_data, &tonemap_unform, sizeof(tonemap_unform));
+  memcpy(tonemap_data, &tonemap_uniform, sizeof(tonemap_uniform));
   vkUnmapMemory(device_, hdr_tonemapping_memory_[swapchain_image_i]);
   // Step 8: Directly copy Log Illuminance Sum from compute result
   VkBufferCopy buffer_cp{};

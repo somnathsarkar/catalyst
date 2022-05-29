@@ -80,6 +80,7 @@ const class Scene {
   std::vector<Texture*> textures_;
   std::vector<Cubemap*> cubemaps_;
   std::vector<Skybox*> skyboxes_;
+  std::vector<Settings*> settings_;
   std::vector<Camera> cameras_;
   std::vector<DebugDrawObject*> debugdraw_objects_;
 
@@ -100,6 +101,7 @@ const class Scene {
   Texture* AddTexture(const std::string& name);
   Cubemap* AddCubemap(const std::string& name);
   Skybox* AddSkybox(const std::string& name);
+  Settings* AddSettings(const std::string& name);
   void DuplicateResource(const Resource* resource);
 
   SceneObject* GetObjectByName(const std::string& name) const;
@@ -124,6 +126,7 @@ const class Scene {
   void CreatePrimitiveTextures();
   void CreatePrimitiveCubemaps();
   void CreatePrimitiveSkyboxes();
+  void CreatePrimitiveSettings();
   Aabb ComputeAabb(const SceneObject* scene_object) const;
   void AabbDfs(const SceneObject* focus, Aabb& aabb,
                glm::mat4 transform = glm::mat4(1.0f)) const;

@@ -87,13 +87,15 @@ class Application :: Renderer {
   struct TonemappingUniform {
     float log_illuminance_sum;
     uint32_t num_pixels;
-    float _pad[2];
+    float exposure_adjustment;
+    float _pad;
   };
   struct SceneDrawDetails {
     PushConstantData push_constants;
     DirectionalLightUniform directional_light_uniform;
     MaterialUniformBlock material_uniform_block;
     SkyboxUniform skybox_uniform;
+    TonemappingUniform tonemap_uniform;
   };
   struct SceneResourceDetails {
     uint32_t mesh_count;
