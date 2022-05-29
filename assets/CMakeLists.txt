@@ -4,13 +4,19 @@ function(add_shader SHADER_FILENAME)
 	set(OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/shaders/${SHADER_FILENAME}.spv")
 	get_filename_component(OUTPUT_DIR ${OUTPUT_PATH} DIRECTORY)
 	add_custom_target(
-		${SHADER_FILENAME} ${CMAKE_COMMAND} -E make_directory "${OUTPUT_DIR}" COMMAND ${GLSLC} -o ${OUTPUT_PATH} ${INPUT_PATH}
+		${SHADER_FILENAME} ${CMAKE_COMMAND} -E make_directory "${OUTPUT_DIR}" COMMAND ${GLSLC} --target-env=vulkan1.1 -o ${OUTPUT_PATH} ${INPUT_PATH}
 	)
 endfunction()
 
 function(add_shader_pair SHADER_NAME)
 	add_shader("${SHADER_NAME}.vert")
 	add_shader("${SHADER_NAME}.frag")
+endfunction()
+
+function(target_shaders TARGET)
+	foreach(SHADER ${ARGN})
+		add_dependencies(${TARGET} "${SHADER}")
+	endforeach()
 endfunction()
 
 function(target_shader_pairs TARGET)
@@ -72,6 +78,10 @@ add_shader_pair("debugdraw")
 add_shader_pair("depthmap")
 add_shader_pair("skybox")
 add_shader_pair("ssao")
+add_shader_pair("hdr")
+
+add_shader("log_illuminance.comp")
+add_shader("reduce_illuminance.comp")
 
 add_model("bun_zipper.obj")
 add_model("teapot.obj")

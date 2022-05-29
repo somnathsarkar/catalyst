@@ -103,6 +103,20 @@ Application::Renderer::FindQueueFamilyIndices(VkPhysicalDevice physical_device) 
 
   return indices;
 }
+void Application::Renderer::CheckComputeDetails() {
+  VkPhysicalDeviceSubgroupProperties subgroup_props{};
+  subgroup_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+  subgroup_props.pNext = nullptr;
+  VkPhysicalDeviceProperties2 props{};
+  props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+  props.pNext = &subgroup_props;
+  vkGetPhysicalDeviceProperties2(physical_device_, &props);
+  compute_details_.subgroup_size = subgroup_props.subgroupSize;
+  compute_details_.workgroup_size =
+      std::min(compute_details_.subgroup_size * compute_details_.subgroup_size,
+               std::min(props.properties.limits.maxComputeWorkGroupCount[0],
+                        props.properties.limits.maxComputeWorkGroupSize[0]));
+}
 void Application::Renderer::CreateLogicalDevice() {
   queue_family_indices_ = FindQueueFamilyIndices(physical_device_);
 

@@ -22,10 +22,13 @@ void Application::Renderer::StartUp() {
   surface_ = window_->GetVkSurface();
 
   CreateDevice();
+  CheckComputeDetails();
 
   // Resizeable resources
   CreateSwapchain();
   CreateDepthResources();
+  CreateHdrResources();
+  CreateIlluminanceResources();
 
   CreateCommandPool();
   CreateCommandBuffers();
@@ -149,10 +152,15 @@ void Application::Renderer::LateShutDown() {
   // Destroy descriptors - no need to destroy descriptor sets, they are cleaned up with the pool
   vkDestroyDescriptorPool(device_, descriptor_pool_, nullptr);
   vkDestroyDescriptorSetLayout(device_, descriptor_set_layout_, nullptr);
+  vkDestroyDescriptorSetLayout(device_, ssao_descriptor_set_layout_, nullptr);
+  vkDestroyDescriptorSetLayout(device_, hdr_descriptor_set_layout_, nullptr);
 
   // Destroy fixed size pipelines
   vkDestroyPipelineLayout(device_, shadowmap_pipeline_layout_, nullptr);
   vkDestroyPipeline(device_, shadowmap_pipeline_, nullptr);
+  vkDestroyPipelineLayout(device_, illuminance_pipeline_layout_, nullptr);
+  vkDestroyPipeline(device_, log_illuminance_pipeline_, nullptr);
+  vkDestroyPipeline(device_, reduce_illuminance_pipeline_, nullptr);
 
   // Destroy Render passes
   vkDestroyRenderPass(device_, shadowmap_render_pass_, nullptr);

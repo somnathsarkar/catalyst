@@ -125,4 +125,11 @@ Skybox::Skybox(Scene* scene, const std::string& name)
       "Diffuse Intensity", Property::CreateFloatGetter(&diffuse_intensity_),
       Property::CreateFloatSetter(&diffuse_intensity_));
 }
+Settings::Settings(Scene* scene, const std::string& name)
+    : Resource(scene, name, ResourceType::kSettings),
+      exposure_adjustment(2.0f) {
+  property_manager_.AddFloatProperty(
+      "Exposure Adjustment", Property::CreateFloatGetter(&exposure_adjustment),
+      Property::CreateFloatSetter(&exposure_adjustment), 0.1f, 10.0f);
+}
 }  // namespace catalyst

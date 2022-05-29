@@ -15,9 +15,11 @@ enum class ResourceType : uint32_t {
   kTexture = 3,
   kCubemap = 4,
   kSkybox = 5,
+  kSettings = 6,
 };
 const std::string kResourceTypeNames[] = {"Undefined", "Mesh",    "Material",
-                                          "Texture",   "Cubemap", "Skybox"};
+                                          "Texture",   "Cubemap", "Skybox",
+                                          "Settings"};
 class Resource {
  public:
   std::string name_;
@@ -77,5 +79,10 @@ class Skybox : public Resource {
   float specular_intensity_;
   float diffuse_intensity_;
   Skybox(Scene* scene, const std::string& name);
+};
+class Settings : public Resource {
+ public:
+  float exposure_adjustment;
+  Settings(Scene* scene, const std::string& name);
 };
 }  // namespace catalyst

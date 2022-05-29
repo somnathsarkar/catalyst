@@ -20,6 +20,7 @@ Scene::Scene() {
   CreatePrimitiveMaterials();
   CreatePrimitiveCubemaps();
   CreatePrimitiveSkyboxes();
+  CreatePrimitiveSettings();
 }
 Scene::~Scene() { delete root_; }
 MeshObject* Scene::AddPrimitiveMesh(SceneObject* parent, PrimitiveMeshType type) {
@@ -123,6 +124,13 @@ Skybox* Scene::AddSkybox(const std::string& name) {
   skyboxes_.push_back(sbox);
   resource_name_map_[sbox_name] = sbox;
   return sbox;
+}
+Settings* Scene::AddSettings(const std::string& name) {
+  std::string set_name = GetAvailableResourceName(name);
+  Settings* settings = new Settings(this, set_name);
+  settings_.push_back(settings);
+  resource_name_map_[set_name] = settings;
+  return settings;
 }
 void Scene::DuplicateResource(const Resource* resource) {
   const std::string& initial_name = resource->name_;
@@ -358,6 +366,7 @@ Aabb
   AabbDfs(scene_object, aabb, parent_transform);
   return aabb;
 }
+void Scene::CreatePrimitiveSettings() { AddSettings("Settings"); }
 void Scene::AabbDfs(const SceneObject* focus, Aabb& aabb,
                     glm::mat4 transform) const {
   glm::vec3 translate_point = glm::vec3(

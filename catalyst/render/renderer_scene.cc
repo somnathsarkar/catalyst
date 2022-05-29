@@ -486,10 +486,26 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
 
   DrawSceneMeshes(cmd, graphics_pipeline_layout_, details, scene_->root_, glm::mat4(1.0f));
 
+  vkCmdEndRenderPass(cmd);
+
+  // Calculate Exposure
+  details.tonemap_uniform.exposure_adjustment =
+      scene_->settings_[0]->exposure_adjustment;
+  ComputeTonemapping(cmd, image_i, details);
+  
+  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          hdr_pipeline_layout_, 0, 1,
+                          &hdr_descriptor_sets_[image_i], 0, nullptr);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, hdr_pipeline_);
+  vkCmdBindVertexBuffers(cmd, 0, 1, &skybox_vertex_buffer_, vertex_offsets);
+  BeginHdrRenderPass(cmd, image_i);
+  vkCmdDraw(cmd, 6, 1, 0, 0);
+  vkCmdEndRenderPass(cmd);
+
+  // Debug Draw
   if (debug_enabled_) {
     DebugDrawScene(image_i);
   }
-  vkCmdEndRenderPass(cmd);
 }
 void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayout& layout,
                                             SceneDrawDetails& details,
@@ -526,6 +542,7 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
 }
 void Application::Renderer::DebugDrawScene(uint32_t image_i) {
   VkCommandBuffer& cmd = command_buffers_[image_i];
+  BeginDebugDrawRenderPass(cmd, image_i);
   SceneDrawDetails dummy_details;
   for (const DebugDrawObject* debugdraw_object : scene_->debugdraw_objects_) {
     switch (debugdraw_object->type_) {
@@ -550,6 +567,7 @@ void Application::Renderer::DebugDrawScene(uint32_t image_i) {
       }
     }
   }
+  vkCmdEndRenderPass(cmd);
 }
 void Application::Renderer::DebugDrawAabb(uint32_t image_i,
                                           const Aabb& aabb) {
