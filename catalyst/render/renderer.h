@@ -102,6 +102,7 @@ class Application :: Renderer {
     SkyboxUniform skybox_uniform;
     TonemappingUniform tonemap_uniform;
     SsrUniform ssr_uniform;
+    uint32_t debugdraw_offset_;
   };
   struct SceneResourceDetails {
     uint32_t mesh_count;
@@ -410,8 +411,11 @@ class Application :: Renderer {
                     glm::mat4 model_transform);
   void DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayout& layout, SceneDrawDetails& details,
                        const SceneObject* focus, glm::mat4 model_transform);
-  void DebugDrawScene(uint32_t image_i);
-  void DebugDrawAabb(uint32_t image_i, const Aabb& aabb);
+  void DebugDrawScene(uint32_t image_i, SceneDrawDetails& details);
+  void DebugDrawSceneAabb(uint32_t image_i, const Aabb& aabb, SceneDrawDetails& details);
+  void DebugDrawSceneBillboard(uint32_t image_i,
+                               const DebugDrawBillboard* billboard,
+                               SceneDrawDetails& details);
   void DrawSceneShadowmaps(VkCommandBuffer& cmd, uint32_t swapchain_image_i, SceneDrawDetails& details);
   void DrawSceneZPrePass(VkCommandBuffer& cmd, uint32_t swapchain_image_i,
                          SceneDrawDetails& details);

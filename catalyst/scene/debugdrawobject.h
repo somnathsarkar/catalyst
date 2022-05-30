@@ -6,6 +6,7 @@ enum class DebugDrawType : uint32_t{
   kWireframe = 0,
   kAABB = 1,
   kOOBB = 2,
+  kBillboard = 3,
 };
 class DebugDrawObject {
  public:
@@ -22,5 +23,10 @@ class DebugDrawAABB : public DebugDrawObject {
   public:
   Aabb aabb_;
    explicit DebugDrawAABB(const Aabb& aabb);
+};
+class DebugDrawBillboard : public DebugDrawObject {
+ public:
+  glm::vec3 position_;
+  explicit DebugDrawBillboard(const glm::vec3& pos);
 };
 }  // namespace catalyst

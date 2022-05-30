@@ -37,6 +37,10 @@ struct Vertex {
   glm::vec3 tangent;
   glm::vec3 bitangent;
 };
+struct DebugDrawVertex {
+  glm::vec3 position;
+  glm::vec2 uv;
+};
 class Mesh : public Resource {
  public:
   std::vector<Vertex> vertices;

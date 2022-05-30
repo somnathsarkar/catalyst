@@ -6,7 +6,7 @@ void Application::Renderer::CreateDebugDrawResources() {
   debugdraw_memory_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     CreateBuffer(debugdraw_buffer_[frame_i], debugdraw_memory_[frame_i],
-                 sizeof(Vertex) * Scene::kMaxDebugDrawVertices,
+                 sizeof(DebugDrawVertex) * Scene::kMaxDebugDrawVertices,
                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -108,47 +108,28 @@ void Application::Renderer::CreateDebugDrawPipeline() {
   VkVertexInputBindingDescription vertex_bd{};
   vertex_bd.binding = 0;
   vertex_bd.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-  vertex_bd.stride = sizeof(Vertex);
+  vertex_bd.stride = sizeof(DebugDrawVertex);
 
   VkVertexInputAttributeDescription vertex_pos_ad{};
   vertex_pos_ad.binding = 0;
   vertex_pos_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
   vertex_pos_ad.location = 0;
-  vertex_pos_ad.offset = 0;
-
-  VkVertexInputAttributeDescription vertex_norm_ad{};
-  vertex_norm_ad.binding = 0;
-  vertex_norm_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
-  vertex_norm_ad.location = 1;
-  vertex_norm_ad.offset = offsetof(Vertex, normal);
+  vertex_pos_ad.offset = offsetof(DebugDrawVertex, position);
 
   VkVertexInputAttributeDescription vertex_uv_ad{};
   vertex_uv_ad.binding = 0;
   vertex_uv_ad.format = VK_FORMAT_R32G32_SFLOAT;
-  vertex_uv_ad.location = 2;
-  vertex_uv_ad.offset = offsetof(Vertex, uv);
+  vertex_uv_ad.location = 1;
+  vertex_uv_ad.offset = offsetof(DebugDrawVertex, uv);
 
-  VkVertexInputAttributeDescription vertex_tan_ad{};
-  vertex_tan_ad.binding = 0;
-  vertex_tan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
-  vertex_tan_ad.location = 3;
-  vertex_tan_ad.offset = offsetof(Vertex, tangent);
-
-  VkVertexInputAttributeDescription vertex_bitan_ad{};
-  vertex_bitan_ad.binding = 0;
-  vertex_bitan_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
-  vertex_bitan_ad.location = 4;
-  vertex_bitan_ad.offset = offsetof(Vertex, bitangent);
-
-  VkVertexInputAttributeDescription vertex_ads[] = {
-      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad, vertex_tan_ad,
-      vertex_bitan_ad};
+  VkVertexInputAttributeDescription vertex_ads[] = {vertex_pos_ad,
+                                                    vertex_uv_ad};
 
   VkPipelineVertexInputStateCreateInfo vertex_input_info{};
   vertex_input_info.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_info.vertexBindingDescriptionCount = 1;
-  vertex_input_info.vertexAttributeDescriptionCount = 5;
+  vertex_input_info.vertexAttributeDescriptionCount = 2;
   vertex_input_info.pVertexBindingDescriptions = &vertex_bd;
   vertex_input_info.pVertexAttributeDescriptions = vertex_ads;
 
@@ -184,7 +165,7 @@ void Application::Renderer::CreateDebugDrawPipeline() {
   rasterizer_state.rasterizerDiscardEnable = VK_FALSE;
   rasterizer_state.polygonMode = VK_POLYGON_MODE_LINE;
   rasterizer_state.lineWidth = 2.0f;
-  rasterizer_state.cullMode = VK_CULL_MODE_BACK_BIT;
+  rasterizer_state.cullMode = VK_CULL_MODE_NONE;
   rasterizer_state.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
   rasterizer_state.depthBiasEnable = VK_FALSE;
 
@@ -296,7 +277,7 @@ void Application::Renderer::CreateDebugDrawLinesPipeline() {
   VkVertexInputBindingDescription vertex_bd{};
   vertex_bd.binding = 0;
   vertex_bd.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-  vertex_bd.stride = sizeof(Vertex);
+  vertex_bd.stride = sizeof(DebugDrawVertex);
 
   VkVertexInputAttributeDescription vertex_pos_ad{};
   vertex_pos_ad.binding = 0;
@@ -304,26 +285,20 @@ void Application::Renderer::CreateDebugDrawLinesPipeline() {
   vertex_pos_ad.location = 0;
   vertex_pos_ad.offset = 0;
 
-  VkVertexInputAttributeDescription vertex_norm_ad{};
-  vertex_norm_ad.binding = 0;
-  vertex_norm_ad.format = VK_FORMAT_R32G32B32_SFLOAT;
-  vertex_norm_ad.location = 1;
-  vertex_norm_ad.offset = offsetof(Vertex, normal);
-
   VkVertexInputAttributeDescription vertex_uv_ad{};
   vertex_uv_ad.binding = 0;
   vertex_uv_ad.format = VK_FORMAT_R32G32_SFLOAT;
-  vertex_uv_ad.location = 2;
-  vertex_uv_ad.offset = offsetof(Vertex, uv);
+  vertex_uv_ad.location = 1;
+  vertex_uv_ad.offset = offsetof(DebugDrawVertex, uv);
 
-  VkVertexInputAttributeDescription vertex_ads[] = {
-      vertex_pos_ad, vertex_norm_ad, vertex_uv_ad};
+  VkVertexInputAttributeDescription vertex_ads[] = {vertex_pos_ad,
+                                                    vertex_uv_ad};
 
   VkPipelineVertexInputStateCreateInfo vertex_input_info{};
   vertex_input_info.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_info.vertexBindingDescriptionCount = 1;
-  vertex_input_info.vertexAttributeDescriptionCount = 3;
+  vertex_input_info.vertexAttributeDescriptionCount = 2;
   vertex_input_info.pVertexBindingDescriptions = &vertex_bd;
   vertex_input_info.pVertexAttributeDescriptions = vertex_ads;
 

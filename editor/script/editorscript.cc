@@ -61,6 +61,18 @@ void EditorScript::UpdateSelection(
     catalyst::Aabb aabb = scene.ComputeAabb(selection);
     catalyst::DebugDrawAABB* debug_aabb = new catalyst::DebugDrawAABB(aabb);
     scene.debugdraw_objects_.push_back(debug_aabb);
+    // Add billboards
+    for (const catalyst::SceneObject* dd_object : selection) {
+      if (dd_object->type_ == catalyst::SceneObjectType::kDirectionalLight) {
+        glm::mat4 parent_transform = scene.GetParentTransform(dd_object);
+        glm::mat4 object_transform =
+            parent_transform * dd_object->transform_.GetTransformationMatrix();
+        glm::vec3 world_pos = object_transform[3];
+        catalyst::DebugDrawBillboard* dd_billboard =
+            new catalyst::DebugDrawBillboard(world_pos);
+        scene.debugdraw_objects_.push_back(dd_billboard);
+      }
+    }
   }
 }
 }
