@@ -4,7 +4,7 @@ function(add_shader SHADER_FILENAME)
 	set(OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/shaders/${SHADER_FILENAME}.spv")
 	get_filename_component(OUTPUT_DIR ${OUTPUT_PATH} DIRECTORY)
 	add_custom_target(
-		${SHADER_FILENAME} ${CMAKE_COMMAND} -E make_directory "${OUTPUT_DIR}" COMMAND ${GLSLC} --target-env=vulkan1.1 -o ${OUTPUT_PATH} ${INPUT_PATH}
+		${SHADER_FILENAME} ${CMAKE_COMMAND} -E make_directory "${OUTPUT_DIR}" COMMAND ${GLSLC} --target-env=vulkan1.1 -o ${OUTPUT_PATH} ${INPUT_PATH} -g
 	)
 endfunction()
 
