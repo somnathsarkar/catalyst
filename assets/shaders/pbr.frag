@@ -111,11 +111,11 @@ void main() {
     float roughness_mip = (roughness*MAX_MIP_LEVEL);
 
     // GI Specular component
-    vec3 ssr_sample = texture_gaussian(ssr_map,screen_pos).rgb;
+    vec3 ssr_sample = ssao_sample*texture_gaussian(ssr_map,screen_pos).rgb;
     currentColor += (1.0f-roughness)*ssr_sample;
     
     // Environmental IBL, Specular component
-    currentColor += vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
+    currentColor += ssao_sample*vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
     // Environmental IBL, Diffuse component
     currentColor += ssao_sample*albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
 
