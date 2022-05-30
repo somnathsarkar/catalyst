@@ -65,6 +65,19 @@ layout(location = 8) flat in uint materialId;
 
 layout(location = 0) out vec4 outColor;
 
+float gaussian_kernel[] = {0.0625f,0.125f,0.0625f,0.125f,0.25f,0.125f,0.0625f,0.125f,0.0625f};
+
+vec4 texture_gaussian(sampler2D tex, vec2 tex_coord){
+    vec2 tex_size = 1.0f/textureSize(tex,0);
+    vec4 ans = vec4(0.0f);
+    for(int i = -1; i<=1; i++){
+        for(int j = -1; j<=1; j++){
+            ans += texture(tex,tex_coord+ivec2(i,j)*tex_size)*gaussian_kernel[3*(i+1)+j+1];
+        }
+    }
+    return ans;
+}
+
 void main() {
     Material material = material_uniform.materials[materialId];
     int specular_environment_map = skybox_uniform.skybox.specular_cubemap_id;
@@ -98,7 +111,7 @@ void main() {
     float roughness_mip = (roughness*MAX_MIP_LEVEL);
 
     // GI Specular component
-    vec3 ssr_sample = texture(ssr_map,screen_pos).rgb;
+    vec3 ssr_sample = texture_gaussian(ssr_map,screen_pos).rgb;
     currentColor += (1.0f-roughness)*ssr_sample;
     
     // Environmental IBL, Specular component

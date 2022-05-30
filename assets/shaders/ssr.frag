@@ -18,7 +18,6 @@ layout(location = 1) in mat4 clipToViewTransform;
 layout(location = 0) out vec4 outColor;
 
 vec2 depth_texel_size;
-float gaussian_kernel[] = {0.0625f,0.125f,0.0625f,0.125f,0.25f,0.125f,0.0625f,0.125f,0.0625f};
 
 vec3 GetViewPos(ivec2 offset){
 	float depth = texture(depthmap,screenPos+offset*depth_texel_size).r;
