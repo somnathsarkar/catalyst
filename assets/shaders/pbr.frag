@@ -2,6 +2,7 @@
 
 #define M_PI 3.1415926535897932384626433832795
 #define MAX_MIP_LEVEL 12.0f
+#define EPS 1e-7f
 
 struct DirectionalLight{
     mat4 world_to_light_transform;
@@ -50,6 +51,8 @@ layout(binding = 5) uniform skybox_uniform_block{
 
 layout(binding = 6) uniform sampler2D ssao_map;
 
+layout(binding = 7) uniform sampler2D ssr_map;
+
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;
 layout(location = 2) in vec3 worldTangent;
@@ -92,12 +95,15 @@ void main() {
     vec3 ssao_sample = texture(ssao_map,screen_pos).rgb;
     if(material.ao_texture_id>-1)
         ssao_sample = texture(textures[material.ao_texture_id],texCoords).rgb;
-
-    // Environmental IBL
-    // Specular component
     float roughness_mip = (roughness*MAX_MIP_LEVEL);
-    currentColor += ssao_sample*vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
-    // Diffuse component
+
+    // GI Specular component
+    vec3 ssr_sample = texture(ssr_map,screen_pos).rgb;
+    currentColor += (1.0f-roughness)*ssr_sample;
+    
+    // Environmental IBL, Specular component
+    currentColor += vec3(skybox_uniform.skybox.specular_intensity*textureLod(cubemaps[specular_environment_map],R,roughness_mip));
+    // Environmental IBL, Diffuse component
     currentColor += ssao_sample*albedo*vec3(skybox_uniform.skybox.diffuse_intensity*textureLod(cubemaps[diffuse_environemnt_map],n,roughness_mip));
 
     for(uint light_i = 0; light_i<directional_light_uniform.num_lights; light_i++){

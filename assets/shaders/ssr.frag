@@ -1,5 +1,7 @@
 #version 450
 
+#define EPS 1e-7f
+
 layout(set = 0, binding = 0) uniform sampler2D depthmap;
 
 layout(set = 0, binding = 1) uniform sampler2D previous_frame;
@@ -65,7 +67,8 @@ void main(){
 	vec3 view_normal = GetViewNormal(view_pos);
 	vec3 view_dir = normalize(view_pos);
 	vec3 reflect_dir = reflect(view_dir,view_normal);
-	float dist = 0.1f;
+	float dist_eps = 0.1f;
+	float dist = dist_eps;
 	vec3 reflect_color = vec3(0.0f);
 	while(true){
 		vec4 view_reflect_pos = vec4(view_pos+reflect_dir*dist,1.0f);
@@ -73,14 +76,17 @@ void main(){
 		vec2 screen_reflect_pos = clip_reflect_pos.xy/clip_reflect_pos.w;
 		screen_reflect_pos = (screen_reflect_pos+1.0f)/2.0f;
 		float reflect_depth = clip_reflect_pos.z/clip_reflect_pos.w;
-		if(screen_reflect_pos.x<0.0f||screen_reflect_pos.x>1.0f||screen_reflect_pos.y<0.0f||screen_reflect_pos.y>1.0f)
+		if(screen_reflect_pos.x<0.0f||screen_reflect_pos.x>1.0f||screen_reflect_pos.y<0.0f||screen_reflect_pos.y>1.0f||reflect_depth+EPS>1.0f)
 			break;
 		float depth_sample = texture(depthmap,screen_reflect_pos).r;
-		if(depth_sample<reflect_depth){
+		vec4 clip_sample_pos = vec4((screen_reflect_pos*2.0f)-1.0f,depth_sample,1.0f);
+		vec4 view_sample_pos4 = clipToViewTransform*clip_sample_pos;
+		vec3 view_sample_pos = view_sample_pos4.xyz/view_sample_pos4.w;
+		if(view_sample_pos.y<view_reflect_pos.y&&view_sample_pos.y+0.005>view_reflect_pos.y){
 			reflect_color = texture(previous_frame,screen_reflect_pos).rgb;
 			break;
 		}
-		dist += 0.1f;
+		dist += dist_eps;
 	}
 	outColor = vec4(reflect_color,1.0f);
 }
