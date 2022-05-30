@@ -25,6 +25,7 @@ target_sources(catalyst PRIVATE
 "render/renderer_ssao.cc"
 "render/renderer_hdr.cc"
 "render/renderer_illuminance.cc"
+"render/renderer_ssr.cc"
 "application/application.h"
 "application/application.cc"
 "window/window.h"
@@ -50,7 +51,7 @@ target_sources(catalyst PRIVATE
 "filesystem/importer.h"
 "filesystem/importer.cc")
 
-target_shader_pairs(catalyst "phong" "debugdraw" "depthmap" "pbr" "skybox" "ssao" "hdr")
+target_shader_pairs(catalyst "phong" "debugdraw" "depthmap" "pbr" "skybox" "ssao" "hdr" "ssr")
 target_shaders(catalyst "log_illuminance.comp" "reduce_illuminance.comp")
 target_models(catalyst "bun_zipper.obj" "teapot.obj")
 target_textures(catalyst "black.png" "white.png")

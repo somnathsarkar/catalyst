@@ -433,8 +433,10 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
                      sizeof(details.push_constants.view_to_clip_transform),
                      &details.push_constants.view_to_clip_transform);
 
+  // Z-Prepass
   DrawSceneZPrePass(cmd, image_i, details);
 
+  // SSAO Pass
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           ssao_pipeline_layout_, 0, 1,
                           &ssao_descriptor_sets_[image_i], 0, nullptr);
@@ -443,6 +445,11 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ssao_pipeline_);
   vkCmdDraw(cmd, 6, 1, 0, 0);
   vkCmdEndRenderPass(cmd);
+
+  // SSR Pass
+  details.ssr_uniform.step_size = scene_->settings_[0]->ssr_step_size_;
+  details.ssr_uniform.thickness = scene_->settings_[0]->ssr_thickness_;
+  ComputeSsrMap(cmd, image_i, details);
 
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           graphics_pipeline_layout_, 0, 1,
@@ -489,8 +496,8 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
   vkCmdEndRenderPass(cmd);
 
   // Calculate Exposure
-  details.tonemap_uniform.exposure_adjustment =
-      scene_->settings_[0]->exposure_adjustment;
+  details.tonemap_uniform.exposure_adjustment_ =
+      scene_->settings_[0]->exposure_adjustment_;
   ComputeTonemapping(cmd, image_i, details);
   
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,

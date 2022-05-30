@@ -82,7 +82,9 @@ class Skybox : public Resource {
 };
 class Settings : public Resource {
  public:
-  float exposure_adjustment;
+  float exposure_adjustment_;
+  float ssr_step_size_;
+  float ssr_thickness_;
   Settings(Scene* scene, const std::string& name);
 };
 }  // namespace catalyst

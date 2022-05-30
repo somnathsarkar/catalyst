@@ -160,6 +160,9 @@ void Application::Renderer::CreateSwapchain() {
     swapchain_image_views_.push_back(image_view);
   }
   frame_count_ = static_cast<uint32_t>(swapchain_images_.size());
+  rendered_frames_.resize(frame_count_, false);
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
+    rendered_frames_[frame_i] = false;
 }
 VkFormat Application::Renderer::SelectFormat(
     const std::vector<VkFormat>& candidates, VkImageTiling req_tiling,
@@ -348,11 +351,13 @@ void Application::Renderer::DestroySwapchain() {
     vkDestroyFramebuffer(device_, depthmap_framebuffers_[frame_i], nullptr);
     vkDestroyFramebuffer(device_, ssao_framebuffers_[frame_i], nullptr);
     vkDestroyFramebuffer(device_, hdr_framebuffers_[frame_i], nullptr);
+    vkDestroyFramebuffer(device_, ssr_framebuffers_[frame_i], nullptr);
   }
   framebuffers_.clear();
   depthmap_framebuffers_.clear();
   ssao_framebuffers_.clear();
   hdr_framebuffers_.clear();
+  ssr_framebuffers_.clear();
 
   // Destroy pipelines and render passes
   vkDestroyPipelineLayout(device_, graphics_pipeline_layout_, nullptr);
@@ -367,11 +372,14 @@ void Application::Renderer::DestroySwapchain() {
   vkDestroyPipeline(device_, ssao_pipeline_, nullptr);
   vkDestroyPipelineLayout(device_, hdr_pipeline_layout_, nullptr);
   vkDestroyPipeline(device_, hdr_pipeline_, nullptr);
+  vkDestroyPipelineLayout(device_, ssr_pipeline_layout_, nullptr);
+  vkDestroyPipeline(device_, ssr_pipeline_, nullptr);
   vkDestroyRenderPass(device_, render_pass_, nullptr);
   vkDestroyRenderPass(device_, debugdraw_render_pass_, nullptr);
   vkDestroyRenderPass(device_, depthmap_render_pass_, nullptr);
   vkDestroyRenderPass(device_, ssao_render_pass_, nullptr);
   vkDestroyRenderPass(device_, hdr_render_pass_, nullptr);
+  vkDestroyRenderPass(device_, ssr_render_pass_, nullptr);
 
   // Destroy resources
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
@@ -391,6 +399,11 @@ void Application::Renderer::DestroySwapchain() {
       vkFreeMemory(device_, illuminance_memory_[frame_i][buff_i], nullptr);
       vkDestroyBuffer(device_, illuminance_buffers_[frame_i][buff_i], nullptr);
     }
+    vkDestroyImageView(device_, ssr_image_views_[frame_i], nullptr);
+    vkFreeMemory(device_, ssr_memory_[frame_i], nullptr);
+    vkDestroyImage(device_, ssr_images_[frame_i], nullptr);
+    vkFreeMemory(device_, ssr_uniform_memory_[frame_i], nullptr);
+    vkDestroyBuffer(device_, ssr_uniform_[frame_i], nullptr);
   }
   vkDestroyImageView(device_, ssn_image_view_, nullptr);
   vkFreeMemory(device_, ssn_memory_, nullptr);
@@ -406,7 +419,11 @@ void Application::Renderer::DestroySwapchain() {
   hdr_images_.clear();
   hdr_tonemapping_buffers_.clear();
   hdr_tonemapping_memory_.clear();
+  ssr_image_views_.clear();
+  ssr_images_.clear();
+  ssr_memory_.clear();
 
+  rendered_frames_.clear();
   vkDestroySwapchainKHR(device_, swapchain_, nullptr);
   swapchain_ = VK_NULL_HANDLE;
 }
@@ -416,6 +433,7 @@ void Application::Renderer::RecreateSwapchain() {
   CreateDepthResources();
   CreateSsaoResources();
   CreateHdrResources();
+  CreateSsrResources();
   CreateIlluminanceResources();
   CreateRenderPasses(false);
   CreatePipelines(false);
@@ -441,6 +459,7 @@ void Application::Renderer::CreatePipelines(bool include_fixed_size) {
   CreateDepthmapPipeline();
   CreateSsaoPipeline();
   CreateHdrPipeline();
+  CreateSsrPipeline();
   if (include_fixed_size) {
     CreateShadowmapPipeline();
     CreateIlluminancePipelines();
@@ -452,6 +471,7 @@ void Application::Renderer::CreateRenderPasses(bool include_fixed_size) {
   CreateDepthmapRenderPass();
   CreateSsaoRenderPass();
   CreateHdrRenderPass();
+  CreateSsrRenderPass();
   if(include_fixed_size) CreateShadowmapRenderPass();
 }
 void Application::Renderer::CreateFramebuffers(bool include_fixed_size) {
@@ -459,6 +479,7 @@ void Application::Renderer::CreateFramebuffers(bool include_fixed_size) {
   CreateDepthmapFramebuffers();
   CreateSsaoFramebuffers();
   CreateHdrFramebuffers();
+  CreateSsrFramebuffers();
   if (include_fixed_size) CreateDirectionalShadowmapFramebuffers();
 }
 VkShaderModule Application::Renderer::CreateShaderModule(
@@ -940,6 +961,7 @@ void Application::Renderer::DrawFrame() {
     RecreateSwapchain();
   } else {
     ASSERT(present_result == VK_SUCCESS, "Could not present frame!");
+    rendered_frames_[image_i] = true;
   }
 
   frame_i = (frame_i + 1) % frame_count;

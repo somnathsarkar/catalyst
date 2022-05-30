@@ -53,19 +53,27 @@ void Application::Renderer::CreateDescriptorSetLayout() {
   ssao_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
   ssao_binding.pImmutableSamplers = nullptr;
 
+  VkDescriptorSetLayoutBinding ssr_binding{};
+  ssr_binding.binding = 7;
+  ssr_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  ssr_binding.descriptorCount = 1;
+  ssr_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  ssr_binding.pImmutableSamplers = nullptr;
+
   VkDescriptorSetLayoutBinding bindings[] = {directional_light_binding,
                                              directional_shadow_binding,
                                              material_uniform_binding,
                                              texture_binding,
                                              cubemap_binding,
                                              skybox_binding,
-                                             ssao_binding};
+                                             ssao_binding,
+                                             ssr_binding};
 
   VkDescriptorSetLayoutCreateInfo layout_ci{};
   layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   layout_ci.pNext = nullptr;
   layout_ci.flags = 0;
-  layout_ci.bindingCount = 7;
+  layout_ci.bindingCount = 8;
   layout_ci.pBindings = bindings;
   VkResult create_result = vkCreateDescriptorSetLayout(
       device_, &layout_ci, nullptr, &descriptor_set_layout_);
@@ -163,18 +171,56 @@ void Application::Renderer::CreateDescriptorSetLayout() {
                                               &illuminance_descriptor_set_layout_);
   ASSERT(create_result == VK_SUCCESS,
          "Failed to create illuminance descriptor set layout!");
+
+  // SSR Descriptor Set Layout
+  VkDescriptorSetLayoutBinding ssr_depthmap_binding{};
+  ssr_depthmap_binding.binding = 0;
+  ssr_depthmap_binding.descriptorType =
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  ssr_depthmap_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  ssr_depthmap_binding.descriptorCount = 1;
+  ssr_depthmap_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding ssr_prevframe_binding{};
+  ssr_prevframe_binding.binding = 1;
+  ssr_prevframe_binding.descriptorType =
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  ssr_prevframe_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  ssr_prevframe_binding.descriptorCount = 1;
+  ssr_prevframe_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding ssr_uniform_binding{};
+  ssr_uniform_binding.binding = 2;
+  ssr_uniform_binding.descriptorType =
+      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  ssr_uniform_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  ssr_uniform_binding.descriptorCount = 1;
+  ssr_uniform_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding ssr_bindings[] = {
+      ssr_depthmap_binding, ssr_prevframe_binding, ssr_uniform_binding};
+
+  layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  layout_ci.pNext = nullptr;
+  layout_ci.flags = 0;
+  layout_ci.bindingCount = 3;
+  layout_ci.pBindings = ssr_bindings;
+  create_result = vkCreateDescriptorSetLayout(
+      device_, &layout_ci, nullptr, &ssr_descriptor_set_layout_);
+  ASSERT(create_result == VK_SUCCESS,
+         "Failed to create SSR descriptor set layout!");
 }
 void Application::Renderer::CreateDescriptorPool() {
   uint32_t frame_count = frame_count_;
 
   VkDescriptorPoolSize uniform_size;
   uniform_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  uniform_size.descriptorCount = frame_count*5;
+  uniform_size.descriptorCount = frame_count*6;
   VkDescriptorPoolSize sampler_size;
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
       frame_count * (Scene::kMaxDirectionalLights + Scene::kMaxTextures +
-                     Scene::kMaxCubemaps + 4);
+                     Scene::kMaxCubemaps + 6);
   VkDescriptorPoolSize storage_size;
   storage_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
   storage_size.descriptorCount = (frame_count * 2);
@@ -184,7 +230,7 @@ void Application::Renderer::CreateDescriptorPool() {
   pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   pool_ci.pNext = nullptr;
   pool_ci.flags = 0;
-  pool_ci.maxSets = frame_count*4;
+  pool_ci.maxSets = frame_count*5;
   pool_ci.poolSizeCount = 3;
   pool_ci.pPoolSizes = pool_sizes;
   VkResult create_result =
@@ -232,6 +278,16 @@ void Application::Renderer::CreateDescriptorSets() {
   alloc_result =
       vkAllocateDescriptorSets(device_, &set_ai, illuminance_descriptor_sets_.data());
   ASSERT(alloc_result == VK_SUCCESS, "Failed to create illuminance descriptor set!");
+
+  layouts.clear();
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
+    layouts.push_back(ssr_descriptor_set_layout_);
+  set_ai.pSetLayouts = layouts.data();
+  ssr_descriptor_sets_.resize(frame_count_);
+  alloc_result = vkAllocateDescriptorSets(device_, &set_ai,
+                                          ssr_descriptor_sets_.data());
+  ASSERT(alloc_result == VK_SUCCESS,
+         "Failed to create SSR descriptor set!");
 }
 
 void Application::Renderer::WriteFixedSizeDescriptorSets() {
@@ -389,6 +445,26 @@ void Application::Renderer::WriteResizeableDescriptorSets() {
     }
     vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
   }
+  // Graphics: SSR Image
+  {
+    std::vector<VkDescriptorImageInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].sampler = texture_sampler_;
+      infos[frame_i].imageView = ssr_image_views_[frame_i];
+      infos[frame_i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 7;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writes[frame_i].pImageInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
   // SSAO: Depth Image
   {
     std::vector<VkDescriptorImageInfo> infos(frame_count_);
@@ -509,6 +585,65 @@ void Application::Renderer::WriteResizeableDescriptorSets() {
       }
     }
     vkUpdateDescriptorSets(device_, frame_count_*2, writes.data(), 0, nullptr);
+  }
+  // SSR: Depthmap Image
+  {
+    std::vector<VkDescriptorImageInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].sampler = texture_sampler_;
+      infos[frame_i].imageView = depth_image_views_[frame_i];
+      infos[frame_i].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = ssr_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 0;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writes[frame_i].pImageInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
+  // SSR: Previous Frame Image
+  {
+    std::vector<VkDescriptorImageInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].sampler = texture_sampler_;
+      infos[frame_i].imageView = hdr_image_views_[(frame_i+frame_count_-1)%frame_count_];
+      infos[frame_i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = ssr_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 1;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writes[frame_i].pImageInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
+  // SSR: Uniform Buffer
+  {
+    std::vector<VkDescriptorBufferInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].buffer = ssr_uniform_[frame_i];
+      infos[frame_i].offset = 0;
+      infos[frame_i].range = VK_WHOLE_SIZE;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = ssr_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 2;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writes[frame_i].pBufferInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
   }
 }
 }  // namespace catalyst

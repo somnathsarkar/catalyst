@@ -87,8 +87,13 @@ class Application :: Renderer {
   struct TonemappingUniform {
     float log_illuminance_sum;
     uint32_t num_pixels;
-    float exposure_adjustment;
+    float exposure_adjustment_;
     float _pad;
+  };
+  struct SsrUniform {
+    float step_size;
+    float thickness;
+    float _pad[2];
   };
   struct SceneDrawDetails {
     PushConstantData push_constants;
@@ -96,6 +101,7 @@ class Application :: Renderer {
     MaterialUniformBlock material_uniform_block;
     SkyboxUniform skybox_uniform;
     TonemappingUniform tonemap_uniform;
+    SsrUniform ssr_uniform;
   };
   struct SceneResourceDetails {
     uint32_t mesh_count;
@@ -220,6 +226,20 @@ class Application :: Renderer {
   std::vector<VkDeviceMemory> hdr_tonemapping_memory_;
   std::vector<VkBuffer> hdr_tonemapping_buffers_;
 
+  std::vector<bool> rendered_frames_;
+  VkFormat ssr_format_;
+  std::vector<VkImage> ssr_images_;
+  std::vector<VkDeviceMemory> ssr_memory_;
+  std::vector<VkImageView> ssr_image_views_;
+  std::vector<VkFramebuffer> ssr_framebuffers_;
+  VkDescriptorSetLayout ssr_descriptor_set_layout_;
+  std::vector<VkDescriptorSet> ssr_descriptor_sets_;
+  VkRenderPass ssr_render_pass_;
+  VkPipelineLayout ssr_pipeline_layout_;
+  VkPipeline ssr_pipeline_;
+  std::vector<VkBuffer> ssr_uniform_;
+  std::vector<VkDeviceMemory> ssr_uniform_memory_;
+
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
   VkQueue compute_queue_;
@@ -308,6 +328,14 @@ class Application :: Renderer {
   void CreateSsaoPipeline();
   void CreateSsaoFramebuffers();
   void BeginSsaoRenderPass(VkCommandBuffer& cmd, uint32_t swapchain_image_i);
+
+  // Rendering Pipeline - SSR
+  void CreateSsrResources();
+  void CreateSsrRenderPass();
+  void CreateSsrPipeline();
+  void CreateSsrFramebuffers();
+  void BeginSsrRenderPass(VkCommandBuffer& cmd, uint32_t swapchain_image_i);
+  void ComputeSsrMap(VkCommandBuffer& cmd, uint32_t image_i, SceneDrawDetails& details);
 
   // Rendering Pipeline - HDR
   void CreateHdrResources();

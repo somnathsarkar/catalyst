@@ -16,30 +16,9 @@ layout(location = 1) in mat4 clipToViewTransform;
 layout(location = 0) out vec4 outColor;
 
 vec2 depth_texel_size;
-float depthmap_samples[5][5];
-float depthmap_blur[3][3];
-float gaussian_kernel[] = {0.0625f,0.125f,0.0625f,0.125f,0.25f,0.125f,0.0625f,0.125f,0.0625f};
-
-void PopulateDepthmapSamples(){
-	for(int i = -2; i<=2; i++){
-		for(int j = -2; j<=2; j++){
-			depthmap_samples[i+2][j+2] = texture(depthmap,screenPos+vec2(float(i),float(j))*depth_texel_size).r;
-		}
-	}
-	for(int i = -1; i<=1; i++){
-		for(int j = -1; j<=1; j++){
-			depthmap_blur[i+1][j+1] = 0.0f;
-			for(int gi = -1; gi<=1; gi++){
-				for(int gj = -1; gj<=1; gj++){
-					depthmap_blur[i+1][j+1] += gaussian_kernel[(gi+1)*3+gj+1]*depthmap_samples[i+gi+2][j+gj+2];
-				}
-			}
-		}
-	}
-}
 
 vec3 GetViewPos(ivec2 offset){
-	float depth = depthmap_blur[offset.x+1][offset.y+1];
+	float depth = texture(depthmap,screenPos+offset*depth_texel_size).r;
 	vec2 tex_coord = screenPos+offset*depth_texel_size;
 	vec4 clipPos = vec4(tex_coord.x*2.0f-1.0f,tex_coord.y*2.0f-1.0f,depth,1.0f);
 	vec4 viewPos4 = clipToViewTransform*clipPos;
@@ -65,7 +44,6 @@ vec3 GetViewNormal(vec3 view_pos){
 
 void main(){
 	depth_texel_size = 1.0f/textureSize(depthmap,0);
-	PopulateDepthmapSamples();
 	vec3 view_pos = GetViewPos(ivec2(0,0));
 	vec3 view_normal = GetViewNormal(view_pos);
 	vec4 noise_sample = normalize(texture(noisemap,screenPos));
