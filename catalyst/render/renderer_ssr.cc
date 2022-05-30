@@ -6,6 +6,8 @@ void Application::Renderer::CreateSsrResources() {
   ssr_images_.resize(frame_count_);
   ssr_image_views_.resize(frame_count_);
   ssr_memory_.resize(frame_count_);
+  ssr_uniform_memory_.resize(frame_count_);
+  ssr_uniform_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     CreateImage(
         ssr_images_[frame_i], ssr_memory_[frame_i], 0, ssr_format_,
@@ -15,6 +17,10 @@ void Application::Renderer::CreateSsrResources() {
     CreateImageView(ssr_image_views_[frame_i], ssr_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, ssr_format_,
                     VK_IMAGE_ASPECT_COLOR_BIT);
+    CreateBuffer(ssr_uniform_[frame_i], ssr_uniform_memory_[frame_i],
+                 sizeof(SsrUniform), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
 }
 void Application::Renderer::CreateSsrRenderPass() {
@@ -268,7 +274,7 @@ void Application::Renderer::BeginSsrRenderPass(VkCommandBuffer& cmd,
   vkCmdBeginRenderPass(cmd, &render_pass_bi, VK_SUBPASS_CONTENTS_INLINE);
 }
 void Application::Renderer::ComputeSsrMap(VkCommandBuffer& cmd,
-                                          uint32_t image_i) {
+                                          uint32_t image_i, SceneDrawDetails& details) {
   uint32_t prev_image_i = (image_i + frame_count_ - 1) % frame_count_;
   // Clear SSR map
   BeginSsrRenderPass(cmd, image_i);
@@ -277,6 +283,10 @@ void Application::Renderer::ComputeSsrMap(VkCommandBuffer& cmd,
     vkCmdEndRenderPass(cmd);
     return;
   }
+  void* uniform_data = nullptr;
+  vkMapMemory(device_, ssr_uniform_memory_[image_i], 0, VK_WHOLE_SIZE, 0, &uniform_data);
+  memcpy(uniform_data, &details.ssr_uniform, sizeof(details.ssr_uniform));
+  vkUnmapMemory(device_, ssr_uniform_memory_[image_i]);
   vkCmdBindDescriptorSets(
       cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ssr_pipeline_layout_, 0, 1,
       &ssr_descriptor_sets_[image_i], 0, nullptr);

@@ -130,7 +130,8 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtFloatField::QtFloatField(
   float initial_value = property_->getter_();
   spinbox_->setMinimum(property_->min_value_);
   spinbox_->setMaximum(property_->max_value_);
-  spinbox_->setSingleStep(0.1);
+  spinbox_->setSingleStep(0.01);
+  spinbox_->setDecimals(6);
   spinbox_->setValue(initial_value);
   QObject::connect(spinbox_, &QDoubleSpinBox::valueChanged, this,
                     &QtFloatField::ValueChanged);

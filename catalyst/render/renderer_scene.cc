@@ -447,7 +447,9 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
   vkCmdEndRenderPass(cmd);
 
   // SSR Pass
-  ComputeSsrMap(cmd, image_i);
+  details.ssr_uniform.step_size = scene_->settings_[0]->ssr_step_size_;
+  details.ssr_uniform.thickness = scene_->settings_[0]->ssr_thickness_;
+  ComputeSsrMap(cmd, image_i, details);
 
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           graphics_pipeline_layout_, 0, 1,
@@ -494,8 +496,8 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
   vkCmdEndRenderPass(cmd);
 
   // Calculate Exposure
-  details.tonemap_uniform.exposure_adjustment =
-      scene_->settings_[0]->exposure_adjustment;
+  details.tonemap_uniform.exposure_adjustment_ =
+      scene_->settings_[0]->exposure_adjustment_;
   ComputeTonemapping(cmd, image_i, details);
   
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,

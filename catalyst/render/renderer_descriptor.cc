@@ -189,13 +189,21 @@ void Application::Renderer::CreateDescriptorSetLayout() {
   ssr_prevframe_binding.descriptorCount = 1;
   ssr_prevframe_binding.pImmutableSamplers = nullptr;
 
-  VkDescriptorSetLayoutBinding ssr_bindings[] = {ssr_depthmap_binding,
-                                                 ssr_prevframe_binding};
+  VkDescriptorSetLayoutBinding ssr_uniform_binding{};
+  ssr_uniform_binding.binding = 2;
+  ssr_uniform_binding.descriptorType =
+      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  ssr_uniform_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  ssr_uniform_binding.descriptorCount = 1;
+  ssr_uniform_binding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutBinding ssr_bindings[] = {
+      ssr_depthmap_binding, ssr_prevframe_binding, ssr_uniform_binding};
 
   layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   layout_ci.pNext = nullptr;
   layout_ci.flags = 0;
-  layout_ci.bindingCount = 2;
+  layout_ci.bindingCount = 3;
   layout_ci.pBindings = ssr_bindings;
   create_result = vkCreateDescriptorSetLayout(
       device_, &layout_ci, nullptr, &ssr_descriptor_set_layout_);
@@ -207,7 +215,7 @@ void Application::Renderer::CreateDescriptorPool() {
 
   VkDescriptorPoolSize uniform_size;
   uniform_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  uniform_size.descriptorCount = frame_count*5;
+  uniform_size.descriptorCount = frame_count*6;
   VkDescriptorPoolSize sampler_size;
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
@@ -615,6 +623,25 @@ void Application::Renderer::WriteResizeableDescriptorSets() {
       writes[frame_i].descriptorType =
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       writes[frame_i].pImageInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
+  // SSR: Uniform Buffer
+  {
+    std::vector<VkDescriptorBufferInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].buffer = ssr_uniform_[frame_i];
+      infos[frame_i].offset = 0;
+      infos[frame_i].range = VK_WHOLE_SIZE;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = ssr_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 2;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writes[frame_i].pBufferInfo = &infos[frame_i];
     }
     vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
   }

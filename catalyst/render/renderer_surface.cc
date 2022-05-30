@@ -402,6 +402,8 @@ void Application::Renderer::DestroySwapchain() {
     vkDestroyImageView(device_, ssr_image_views_[frame_i], nullptr);
     vkFreeMemory(device_, ssr_memory_[frame_i], nullptr);
     vkDestroyImage(device_, ssr_images_[frame_i], nullptr);
+    vkFreeMemory(device_, ssr_uniform_memory_[frame_i], nullptr);
+    vkDestroyBuffer(device_, ssr_uniform_[frame_i], nullptr);
   }
   vkDestroyImageView(device_, ssn_image_view_, nullptr);
   vkFreeMemory(device_, ssn_memory_, nullptr);

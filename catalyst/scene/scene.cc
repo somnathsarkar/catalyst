@@ -323,7 +323,7 @@ void Scene::CreatePrimitiveMaterials() {
   standard->albedo_ = glm::vec3(1.0f, 1.0f, 1.0f);
   standard->reflectance_ = 1.0f;
   standard->metallic_ = 1.0f;
-  standard->roughness_ = 0.1f;
+  standard->roughness_ = 0.7f;
   standard->albedo_texture_id_ = -1;
   standard->metallic_texture_id_ = -1;
   standard->normal_texture_id_ = -1;

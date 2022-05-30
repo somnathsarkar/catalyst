@@ -87,8 +87,13 @@ class Application :: Renderer {
   struct TonemappingUniform {
     float log_illuminance_sum;
     uint32_t num_pixels;
-    float exposure_adjustment;
+    float exposure_adjustment_;
     float _pad;
+  };
+  struct SsrUniform {
+    float step_size;
+    float thickness;
+    float _pad[2];
   };
   struct SceneDrawDetails {
     PushConstantData push_constants;
@@ -96,6 +101,7 @@ class Application :: Renderer {
     MaterialUniformBlock material_uniform_block;
     SkyboxUniform skybox_uniform;
     TonemappingUniform tonemap_uniform;
+    SsrUniform ssr_uniform;
   };
   struct SceneResourceDetails {
     uint32_t mesh_count;
@@ -231,6 +237,8 @@ class Application :: Renderer {
   VkRenderPass ssr_render_pass_;
   VkPipelineLayout ssr_pipeline_layout_;
   VkPipeline ssr_pipeline_;
+  std::vector<VkBuffer> ssr_uniform_;
+  std::vector<VkDeviceMemory> ssr_uniform_memory_;
 
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
@@ -327,7 +335,7 @@ class Application :: Renderer {
   void CreateSsrPipeline();
   void CreateSsrFramebuffers();
   void BeginSsrRenderPass(VkCommandBuffer& cmd, uint32_t swapchain_image_i);
-  void ComputeSsrMap(VkCommandBuffer& cmd, uint32_t image_i);
+  void ComputeSsrMap(VkCommandBuffer& cmd, uint32_t image_i, SceneDrawDetails& details);
 
   // Rendering Pipeline - HDR
   void CreateHdrResources();
