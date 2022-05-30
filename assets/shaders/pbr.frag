@@ -105,7 +105,7 @@ void main() {
     vec3 R = normalize(reflect(-v,n));
     
     vec2 screen_pos = (clipPos.xy/clipPos.w+1.0f)/2.0f;
-    vec3 ssao_sample = texture(ssao_map,screen_pos).rgb;
+    vec3 ssao_sample = texture_gaussian(ssao_map,screen_pos).rgb;
     if(material.ao_texture_id>-1)
         ssao_sample = texture(textures[material.ao_texture_id],texCoords).rgb;
     float roughness_mip = (roughness*MAX_MIP_LEVEL);
