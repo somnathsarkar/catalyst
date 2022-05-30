@@ -35,6 +35,7 @@ void Application::Renderer::StartUp() {
   CreateSyncObjects();
 
   CreateSsaoResources();
+  CreateSsrResources();
 
   CreateDescriptorSetLayout();
   CreateDescriptorPool();
@@ -154,6 +155,9 @@ void Application::Renderer::LateShutDown() {
   vkDestroyDescriptorSetLayout(device_, descriptor_set_layout_, nullptr);
   vkDestroyDescriptorSetLayout(device_, ssao_descriptor_set_layout_, nullptr);
   vkDestroyDescriptorSetLayout(device_, hdr_descriptor_set_layout_, nullptr);
+  vkDestroyDescriptorSetLayout(device_, illuminance_descriptor_set_layout_,
+                               nullptr);
+  vkDestroyDescriptorSetLayout(device_, ssr_descriptor_set_layout_, nullptr);
 
   // Destroy fixed size pipelines
   vkDestroyPipelineLayout(device_, shadowmap_pipeline_layout_, nullptr);

@@ -1,158 +1,37 @@
 #include <catalyst/render/renderer.h>
 
-#include <random>
-
 namespace catalyst {
-void Application::Renderer::CreateSsaoResources() {
-  ssao_format_ = VK_FORMAT_R8G8B8A8_UNORM;
-  ssn_format_ = VK_FORMAT_R8G8B8A8_UNORM;
-
-  // Create Screen-Space Noise Resources
-  CreateImage(ssn_image_, ssn_memory_, 0, ssn_format_,
-              {half_swapchain_extent_.width, half_swapchain_extent_.height, 1},
-              1, 1, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  CreateImageView(ssn_image_view_, ssn_image_, VK_IMAGE_VIEW_TYPE_2D,
-                  ssn_format_, VK_IMAGE_ASPECT_COLOR_BIT);
-  TransitionImageLayout(
-      ssn_image_, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-      VK_PIPELINE_STAGE_TRANSFER_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT);
-  VkDeviceSize ssn_size =
-      sizeof(glm::vec3) * half_swapchain_extent_.width * half_swapchain_extent_.height;
-
-  // Create Staging Buffer
-  VkBuffer staging_buffer;
-  VkDeviceMemory staging_memory;
-  CreateBuffer(staging_buffer, staging_memory, ssn_size,
-               VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-  // Generate Screen Space Noise Data
-  std::uniform_real_distribution<float> random_float(0.0f, 1.0f);
-  std::default_random_engine random_gen;
-  std::vector<glm::vec3> noise_vec;
-  for (uint32_t row_i = 0; row_i < half_swapchain_extent_.height; row_i++) {
-    for (uint32_t col_i = 0; col_i < half_swapchain_extent_.width; col_i++) {
-      glm::vec3 noise = glm::vec3(random_float(random_gen) * 2.0f - 1.0f,
-                                  random_float(random_gen) * 2.0f - 1.0f,
-                                  random_float(random_gen) * 2.0f - 1.0f);
-      noise = glm::normalize(noise);
-      noise_vec.push_back(noise);
-    }
-  }
-
-  // Copy Noise Data to Staging Buffer
-  void* staging_data;
-  vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &staging_data);
-  memcpy(staging_data, noise_vec.data(), ssn_size);
-  vkUnmapMemory(device_, staging_memory);
-
-  // Copy Staging Buffer to SSN image
-  VkCommandBuffer cmd;
-  BeginSingleUseCommandBuffer(cmd);
-  VkBufferImageCopy buffer_cp{};
-  buffer_cp.bufferOffset = 0;
-  buffer_cp.bufferRowLength = 0;
-  buffer_cp.bufferImageHeight = 0;
-  buffer_cp.imageOffset = {0, 0, 0};
-  buffer_cp.imageExtent = {half_swapchain_extent_.width,
-                           half_swapchain_extent_.height, 1};
-  buffer_cp.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  buffer_cp.imageSubresource.baseArrayLayer = 0;
-  buffer_cp.imageSubresource.layerCount = 1;
-  buffer_cp.imageSubresource.mipLevel = 0;
-  vkCmdCopyBufferToImage(cmd, staging_buffer, ssn_image_,
-                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &buffer_cp);
-  EndSingleUseCommandBuffer(cmd);
-  // Destroy Staging Buffer
-  vkFreeMemory(device_,staging_memory, nullptr);
-  vkDestroyBuffer(device_,staging_buffer, nullptr);
-  TransitionImageLayout(
-      ssn_image_, VK_IMAGE_ASPECT_COLOR_BIT,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-      VK_ACCESS_SHADER_READ_BIT);
-
-  // Generate Sample Data
-  static constexpr uint32_t kSsaoSamples = 64;
-  VkDeviceSize sample_size = kSsaoSamples * sizeof(glm::vec4);
-  glm::vec4 samples[kSsaoSamples];
-  for (uint32_t sample_i = 0; sample_i < kSsaoSamples; sample_i++) {
-    glm::vec3 noise = glm::vec3(random_float(random_gen) * 0.7f - 0.35f,
-                                random_float(random_gen) * 0.7f - 0.35f,
-                                random_float(random_gen));
-    glm::vec3 sample_dir = glm::normalize(noise);
-    // Quadratic distribution between 0.01f and 1.0f - concentration decreases with larger length
-    float sample_len_factor = static_cast<float>(sample_i) / kSsaoSamples;
-    float sample_len_scale = 0.1f + 0.9f * sample_len_factor;
-    float sample_len =
-        random_float(random_gen) * sample_len_scale * sample_len_scale;
-    samples[sample_i] = glm::vec4(sample_dir*sample_len,0.0f);
-  }
-
-  // Create Staging Buffer
-  CreateBuffer(staging_buffer, staging_memory, sample_size,
-               VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-  // Create SSAO Sample Uniform Buffer
-  CreateBuffer(
-      ssao_sample_uniform_, ssao_sample_memory_, sample_size,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-  // Copy Sample Data to Staging Buffer
-  vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &staging_data);
-  memcpy(staging_data, samples, sample_size);
-  vkUnmapMemory(device_, staging_memory);
-
-  // Copy Staging Buffer to Sample Uniform
-  BeginSingleUseCommandBuffer(cmd);
-  VkBufferCopy sample_cp{};
-  sample_cp.srcOffset = 0;
-  sample_cp.dstOffset = 0;
-  sample_cp.size = sample_size;
-  vkCmdCopyBuffer(cmd, staging_buffer, ssao_sample_uniform_, 1, &sample_cp);
-  EndSingleUseCommandBuffer(cmd);
-
-  // Destroy Staging Buffer
-  vkFreeMemory(device_, staging_memory, nullptr);
-  vkDestroyBuffer(device_, staging_buffer, nullptr);
-
-  ssao_images_.resize(frame_count_);
-  ssao_image_views_.resize(frame_count_);
-  ssao_memory_.resize(frame_count_);
+void Application::Renderer::CreateSsrResources() {
+  ssr_format_ = hdr_format_;
+  ssr_images_.resize(frame_count_);
+  ssr_image_views_.resize(frame_count_);
+  ssr_memory_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
-    CreateImage(ssao_images_[frame_i], ssao_memory_[frame_i], 0,
-                ssao_format_,
-                {half_swapchain_extent_.width, half_swapchain_extent_.height, 1},
-                1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    CreateImageView(ssao_image_views_[frame_i], ssao_images_[frame_i],
-                    VK_IMAGE_VIEW_TYPE_2D, ssao_format_,
+    CreateImage(
+        ssr_images_[frame_i], ssr_memory_[frame_i], 0, ssr_format_,
+        {half_swapchain_extent_.width, half_swapchain_extent_.height, 1}, 1, 1,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    CreateImageView(ssr_image_views_[frame_i], ssr_images_[frame_i],
+                    VK_IMAGE_VIEW_TYPE_2D, ssr_format_,
                     VK_IMAGE_ASPECT_COLOR_BIT);
   }
 }
-void Application::Renderer::CreateSsaoRenderPass() {
-  VkAttachmentDescription ssao_attachment{};
-  ssao_attachment.flags = 0;
-  ssao_attachment.format = ssao_format_;
-  ssao_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  ssao_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  ssao_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  ssao_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  ssao_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-  ssao_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  ssao_attachment.finalLayout =
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+void Application::Renderer::CreateSsrRenderPass() {
+  VkAttachmentDescription ssr_attachment{};
+  ssr_attachment.flags = 0;
+  ssr_attachment.format = ssr_format_;
+  ssr_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  ssr_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  ssr_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  ssr_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  ssr_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+  ssr_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  ssr_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-  VkAttachmentReference ssao_ref{};
-  ssao_ref.attachment = 0;
-  ssao_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  VkAttachmentReference ssr_ref{};
+  ssr_ref.attachment = 0;
+  ssr_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   VkSubpassDescription subpass{};
   subpass.flags = 0;
@@ -160,7 +39,7 @@ void Application::Renderer::CreateSsaoRenderPass() {
   subpass.inputAttachmentCount = 0;
   subpass.pInputAttachments = nullptr;
   subpass.colorAttachmentCount = 1;
-  subpass.pColorAttachments = &ssao_ref;
+  subpass.pColorAttachments = &ssr_ref;
   subpass.pResolveAttachments = nullptr;
   subpass.pDepthStencilAttachment = nullptr;
   subpass.preserveAttachmentCount = 0;
@@ -180,20 +59,20 @@ void Application::Renderer::CreateSsaoRenderPass() {
   render_pass_ci.pNext = nullptr;
   render_pass_ci.flags = 0;
   render_pass_ci.attachmentCount = 1;
-  render_pass_ci.pAttachments = &ssao_attachment;
+  render_pass_ci.pAttachments = &ssr_attachment;
   render_pass_ci.subpassCount = 1;
   render_pass_ci.pSubpasses = &subpass;
   render_pass_ci.dependencyCount = 1;
   render_pass_ci.pDependencies = &dependency;
-  VkResult create_result = vkCreateRenderPass(device_, &render_pass_ci, nullptr,
-                                              &ssao_render_pass_);
-  ASSERT(create_result == VK_SUCCESS, "Could not create SSAO render pass!");
+  VkResult create_result =
+      vkCreateRenderPass(device_, &render_pass_ci, nullptr, &ssr_render_pass_);
+  ASSERT(create_result == VK_SUCCESS, "Could not create SSR render pass!");
 }
-void Application::Renderer::CreateSsaoPipeline() {
+void Application::Renderer::CreateSsrPipeline() {
   const std::vector<char> vert_shader_code =
-      ReadFile("../assets/shaders/ssao.vert.spv");
+      ReadFile("../assets/shaders/ssr.vert.spv");
   const std::vector<char> frag_shader_code =
-      ReadFile("../assets/shaders/ssao.frag.spv");
+      ReadFile("../assets/shaders/ssr.frag.spv");
 
   VkShaderModule vert_shader = CreateShaderModule(vert_shader_code);
   VkShaderModule frag_shader = CreateShaderModule(frag_shader_code);
@@ -325,10 +204,10 @@ void Application::Renderer::CreateSsaoPipeline() {
   layout_ci.pushConstantRangeCount = 1;
   layout_ci.pPushConstantRanges = &vertex_push;
   layout_ci.setLayoutCount = 1;
-  layout_ci.pSetLayouts = &ssao_descriptor_set_layout_;
+  layout_ci.pSetLayouts = &ssr_descriptor_set_layout_;
   VkResult result = vkCreatePipelineLayout(device_, &layout_ci, nullptr,
-                                           &ssao_pipeline_layout_);
-  ASSERT(result == VK_SUCCESS, "Failed to create SSAO pipeline layout!");
+                                           &ssr_pipeline_layout_);
+  ASSERT(result == VK_SUCCESS, "Failed to create SSR pipeline layout!");
 
   VkGraphicsPipelineCreateInfo pipeline_ci{};
   pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -341,54 +220,68 @@ void Application::Renderer::CreateSsaoPipeline() {
   pipeline_ci.pMultisampleState = &multisample_state;
   pipeline_ci.pDepthStencilState = &depth_stencil_state;
   pipeline_ci.pColorBlendState = &color_blend_state;
-  pipeline_ci.layout = ssao_pipeline_layout_;
-  pipeline_ci.renderPass = ssao_render_pass_;
+  pipeline_ci.layout = ssr_pipeline_layout_;
+  pipeline_ci.renderPass = ssr_render_pass_;
   pipeline_ci.subpass = 0;
   pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 
   VkResult create_result = vkCreateGraphicsPipelines(
-      device_, pipeline_cache_, 1, &pipeline_ci, nullptr, &ssao_pipeline_);
-  ASSERT(create_result == VK_SUCCESS, "Failed to create SSAO pipeline!");
+      device_, pipeline_cache_, 1, &pipeline_ci, nullptr, &ssr_pipeline_);
+  ASSERT(create_result == VK_SUCCESS, "Failed to create SSR pipeline!");
 
   vkDestroyShaderModule(device_, vert_shader, nullptr);
   vkDestroyShaderModule(device_, frag_shader, nullptr);
 }
-
-void Application::Renderer::CreateSsaoFramebuffers() {
-  ssao_framebuffers_.resize(frame_count_);
+void Application::Renderer::CreateSsrFramebuffers() {
+  ssr_framebuffers_.resize(frame_count_);
   VkFramebufferCreateInfo framebuffer_ci{};
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     VkFramebufferCreateInfo framebuffer_ci{};
     framebuffer_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebuffer_ci.pNext = nullptr;
     framebuffer_ci.flags = 0;
-    framebuffer_ci.renderPass = ssao_render_pass_;
+    framebuffer_ci.renderPass = ssr_render_pass_;
     framebuffer_ci.attachmentCount = 1;
-    framebuffer_ci.pAttachments = &ssao_image_views_[frame_i];
+    framebuffer_ci.pAttachments = &ssr_image_views_[frame_i];
     framebuffer_ci.width = half_swapchain_extent_.width;
     framebuffer_ci.height = half_swapchain_extent_.height;
     framebuffer_ci.layers = 1;
     VkResult create_result = vkCreateFramebuffer(
-        device_, &framebuffer_ci, nullptr, &ssao_framebuffers_[frame_i]);
-    ASSERT(create_result == VK_SUCCESS,
-           "Could not create SSAO framebuffer!");
+        device_, &framebuffer_ci, nullptr, &ssr_framebuffers_[frame_i]);
+    ASSERT(create_result == VK_SUCCESS, "Could not create SSR framebuffer!");
   }
 }
-
-void Application::Renderer::BeginSsaoRenderPass(VkCommandBuffer& cmd,
+void Application::Renderer::BeginSsrRenderPass(VkCommandBuffer& cmd,
                                                 uint32_t swapchain_image_i) {
   VkClearValue color_clear;
   color_clear.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
   VkRenderPassBeginInfo render_pass_bi{};
   render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   render_pass_bi.pNext = nullptr;
-  render_pass_bi.renderPass = ssao_render_pass_;
-  render_pass_bi.framebuffer = ssao_framebuffers_[swapchain_image_i];
+  render_pass_bi.renderPass = ssr_render_pass_;
+  render_pass_bi.framebuffer = ssr_framebuffers_[swapchain_image_i];
   render_pass_bi.renderArea.extent = half_swapchain_extent_;
   render_pass_bi.renderArea.offset.x = 0;
   render_pass_bi.renderArea.offset.y = 0;
   render_pass_bi.clearValueCount = 1;
   render_pass_bi.pClearValues = &color_clear;
   vkCmdBeginRenderPass(cmd, &render_pass_bi, VK_SUBPASS_CONTENTS_INLINE);
+}
+void Application::Renderer::ComputeSsrMap(VkCommandBuffer& cmd,
+                                          uint32_t image_i) {
+  uint32_t prev_image_i = (image_i + frame_count_ - 1) % frame_count_;
+  // Clear SSR map
+  BeginSsrRenderPass(cmd, image_i);
+  // If previous frame is not available (for eg, due to resizing), stop here
+  if (!rendered_frames_[prev_image_i]) {
+    vkCmdEndRenderPass(cmd);
+    return;
+  }
+  vkCmdBindDescriptorSets(
+      cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ssr_pipeline_layout_, 0, 1,
+      &ssr_descriptor_sets_[image_i], 0, nullptr);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ssr_pipeline_);
+  vkCmdDraw(cmd, 6, 1, 0, 0);
+  vkCmdEndRenderPass(cmd);
 }
 }

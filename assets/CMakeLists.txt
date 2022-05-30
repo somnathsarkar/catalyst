@@ -79,6 +79,7 @@ add_shader_pair("depthmap")
 add_shader_pair("skybox")
 add_shader_pair("ssao")
 add_shader_pair("hdr")
+add_shader_pair("ssr")
 
 add_shader("log_illuminance.comp")
 add_shader("reduce_illuminance.comp")
