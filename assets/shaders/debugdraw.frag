@@ -10,14 +10,15 @@ layout(location = 1) flat in uint debugdrawId;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+    vec4 debug_color = vec4(vec3(0.84f),1.0f);
     if(debugdrawId==0){
         // Default gray
-        outColor = vec4(vec3(0.84f),1.0f);
+        outColor = debug_color;
     }else{
         // Billboard texture, alpha testing
         vec4 texSample = texture(billboards[debugdrawId-1],texCoords);
         if(texSample.a < EPS)
             discard;
-        outColor = vec4(vec3(0.84f),1.0f);;
+        outColor = debug_color;
     }
 }

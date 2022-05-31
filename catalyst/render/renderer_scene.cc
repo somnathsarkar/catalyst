@@ -634,7 +634,7 @@ void Application::Renderer::DebugDrawSceneAabb(uint32_t image_i,
 }
 void Application::Renderer::DebugDrawSceneBillboard(
     uint32_t image_i, const DebugDrawBillboard* billboard, SceneDrawDetails& details) {
-  static float kBillboardClipDim = 0.05f;
+  static float kBillboardDim = 0.05f;
   VkCommandBuffer& cmd = command_buffers_[image_i];
   glm::vec4 world_pos = glm::vec4(billboard->position_,1.0f);
   glm::vec4 view_pos =
@@ -646,8 +646,8 @@ void Application::Renderer::DebugDrawSceneBillboard(
     int yi = i % 2;
     glm::vec2 offset(xi, yi);
     offset = offset * 2.0f - 1.0f;
-    offset *= kBillboardClipDim / 2.0f;
-    bb_verts[i].position = cp + glm::vec3(offset.x, 0.0f, offset.y);
+    offset *= kBillboardDim / 2.0f;
+    bb_verts[i].position = cp + glm::vec3(offset.x, 0.0f, -offset.y);
     bb_verts[i].uv = glm::vec2(xi, yi);
   }
   DebugDrawVertex bb_vert_buffer[] = {bb_verts[0], bb_verts[1], bb_verts[3],
