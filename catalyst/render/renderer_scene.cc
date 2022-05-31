@@ -551,6 +551,9 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
 void Application::Renderer::DebugDrawScene(uint32_t image_i, SceneDrawDetails& details) {
   VkCommandBuffer& cmd = command_buffers_[image_i];
   BeginDebugDrawRenderPass(cmd, image_i);
+  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          debugdraw_pipeline_layout_, 0, 1,
+                          &debugdraw_descriptor_sets_[image_i], 0, nullptr);
   for (const DebugDrawObject* debugdraw_object : scene_->debugdraw_objects_) {
     switch (debugdraw_object->type_) {
       case DebugDrawType::kAABB: {
@@ -619,6 +622,10 @@ void Application::Renderer::DebugDrawSceneAabb(uint32_t image_i,
                      VK_SHADER_STAGE_VERTEX_BIT,
                      offsetof(PushConstantData, model_to_world_transform),
                      sizeof(glm::mat4), &identity);
+  uint32_t aabb_id = 0;
+  vkCmdPushConstants(
+      cmd, debugdraw_pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT,
+      offsetof(PushConstantData, material_id), sizeof(uint32_t), &aabb_id);
   VkDeviceSize vertex_offsets[] = {static_cast<uint64_t>(0)};
   vkCmdBindVertexBuffers(cmd, 0, 1, &debugdraw_buffer_[image_i],
                          vertex_offsets);
@@ -653,6 +660,7 @@ void Application::Renderer::DebugDrawSceneBillboard(
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                     debugdraw_pipeline_);
   glm::mat4 eye(1.0f);
+  uint32_t billboard_id = static_cast<uint32_t>(billboard->billboard_type_);
   vkCmdPushConstants(cmd, debugdraw_pipeline_layout_,
                      VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData),
                      &details.push_constants);
@@ -664,6 +672,9 @@ void Application::Renderer::DebugDrawSceneBillboard(
                      VK_SHADER_STAGE_VERTEX_BIT,
                      offsetof(PushConstantData, world_to_view_transform),
                      sizeof(glm::mat4), &eye);
+  vkCmdPushConstants(
+      cmd, debugdraw_pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT,
+      offsetof(PushConstantData, material_id), sizeof(uint32_t), &billboard_id);
   VkDeviceSize vertex_offsets[] = {0};
   vkCmdBindVertexBuffers(cmd, 0, 1, &debugdraw_buffer_[image_i],
                          vertex_offsets);

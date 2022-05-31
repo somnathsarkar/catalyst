@@ -8,6 +8,6 @@ DebugDrawAABB::DebugDrawAABB(
     const Aabb& aabb)
     : DebugDrawObject(DebugDrawType::kAABB), aabb_(aabb) {
 }
-DebugDrawBillboard::DebugDrawBillboard(const glm::vec3& pos)
-    : DebugDrawObject(DebugDrawType::kBillboard), position_(pos) {}
+DebugDrawBillboard::DebugDrawBillboard(const glm::vec3& pos, BillboardType btype)
+    : DebugDrawObject(DebugDrawType::kBillboard), position_(pos), billboard_type_(btype) {}
 }  // namespace catalyst

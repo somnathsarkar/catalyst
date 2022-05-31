@@ -2,6 +2,9 @@
 #include <catalyst/scene/sceneobject.h>
 
 namespace catalyst {
+enum class BillboardType : uint32_t{
+  kDirectionalLight = 1,
+};
 enum class DebugDrawType : uint32_t{
   kWireframe = 0,
   kAABB = 1,
@@ -27,6 +30,7 @@ class DebugDrawAABB : public DebugDrawObject {
 class DebugDrawBillboard : public DebugDrawObject {
  public:
   glm::vec3 position_;
-  explicit DebugDrawBillboard(const glm::vec3& pos);
+  BillboardType billboard_type_;
+  explicit DebugDrawBillboard(const glm::vec3& pos, BillboardType btype);
 };
 }  // namespace catalyst

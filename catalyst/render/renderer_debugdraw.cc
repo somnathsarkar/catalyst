@@ -1,5 +1,7 @@
 #include <catalyst/render/renderer.h>
 
+#include <catalyst/filesystem/importer.h>
+
 namespace catalyst {
 void Application::Renderer::CreateDebugDrawResources() {
   debugdraw_buffer_.resize(frame_count_);
@@ -11,6 +13,68 @@ void Application::Renderer::CreateDebugDrawResources() {
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
+}
+void Application::Renderer::CreateBillboardResources() {
+  billboard_memory_.resize(Scene::kMaxBillboards);
+  billboard_images_.resize(Scene::kMaxBillboards);
+  billboard_image_views_.resize(Scene::kMaxBillboards);
+  VkDeviceSize billboard_size =
+      Scene::kMaxBillboardResolution * Scene::kMaxBillboardResolution * 4;
+  TextureImporter texture_importer;
+  VkBuffer staging_buffer = VK_NULL_HANDLE;
+  VkDeviceMemory staging_memory = VK_NULL_HANDLE;
+  CreateBuffer(staging_buffer, staging_memory, billboard_size,
+               VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  for (uint32_t bill_i = 0; bill_i < Scene::kMaxBillboards; bill_i++) {
+    CreateImage(
+        billboard_images_[bill_i], billboard_memory_[bill_i], 0,
+        VK_FORMAT_R8G8B8A8_SRGB,
+        {Scene::kMaxBillboardResolution, Scene::kMaxBillboardResolution, 1}, 1,
+        1, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    CreateImageView(billboard_image_views_[bill_i], billboard_images_[bill_i],
+                    VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_SRGB,
+                    VK_IMAGE_ASPECT_COLOR_BIT);
+    TransitionImageLayout(
+        billboard_images_[bill_i], VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+  }
+  // Load Primitive Billboards
+  texture_importer.ReadFile("../assets/billboards/sun.png");
+  const TextureData* tex_data = texture_importer.GetData();
+  void* staging_data = nullptr;
+  vkMapMemory(device_, staging_memory, 0, VK_WHOLE_SIZE, 0, &staging_data);
+  memcpy(staging_data, tex_data->data, billboard_size);
+  vkUnmapMemory(device_, staging_memory);
+  texture_importer.DestroyData();
+  VkBufferImageCopy copy_info{};
+  copy_info.imageExtent = {Scene::kMaxBillboardResolution,
+                           Scene::kMaxBillboardResolution, 1};
+  copy_info.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copy_info.imageSubresource.baseArrayLayer = 0;
+  copy_info.imageSubresource.layerCount = 1;
+  copy_info.imageSubresource.mipLevel = 0;
+  VkCommandBuffer cmd;
+  BeginSingleUseCommandBuffer(cmd);
+  vkCmdCopyBufferToImage(cmd, staging_buffer,
+                         billboard_images_[static_cast<uint32_t>(
+                             BillboardType::kDirectionalLight)-1],
+                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_info);
+  EndSingleUseCommandBuffer(cmd);
+  for (uint32_t bill_i = 0; bill_i < Scene::kMaxBillboards; bill_i++) {
+    TransitionImageLayout(
+        billboard_images_[bill_i], VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+  }
+  vkFreeMemory(device_, staging_memory, nullptr);
+  vkDestroyBuffer(device_,staging_buffer,nullptr);
 }
 void Application::Renderer::CreateDebugDrawRenderPass() {
   VkAttachmentDescription color_attachment{};
@@ -163,7 +227,7 @@ void Application::Renderer::CreateDebugDrawPipeline() {
       VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
   rasterizer_state.depthClampEnable = VK_FALSE;
   rasterizer_state.rasterizerDiscardEnable = VK_FALSE;
-  rasterizer_state.polygonMode = VK_POLYGON_MODE_LINE;
+  rasterizer_state.polygonMode = VK_POLYGON_MODE_FILL;
   rasterizer_state.lineWidth = 2.0f;
   rasterizer_state.cullMode = VK_CULL_MODE_NONE;
   rasterizer_state.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -212,8 +276,8 @@ void Application::Renderer::CreateDebugDrawPipeline() {
   layout_ci.flags = 0;
   layout_ci.pushConstantRangeCount = 1;
   layout_ci.pPushConstantRanges = &vertex_push;
-  layout_ci.setLayoutCount = 0;
-  layout_ci.pSetLayouts = nullptr;
+  layout_ci.setLayoutCount = 1;
+  layout_ci.pSetLayouts = &debugdraw_descriptor_set_layout_;
   VkResult create_result = vkCreatePipelineLayout(device_, &layout_ci, nullptr,
                          &debugdraw_pipeline_layout_);
   ASSERT(create_result == VK_SUCCESS,

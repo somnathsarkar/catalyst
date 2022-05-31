@@ -209,6 +209,28 @@ void Application::Renderer::CreateDescriptorSetLayout() {
       device_, &layout_ci, nullptr, &ssr_descriptor_set_layout_);
   ASSERT(create_result == VK_SUCCESS,
          "Failed to create SSR descriptor set layout!");
+
+  // Debug Draw Descriptor Set Layout
+  if (debug_enabled_) {
+    VkDescriptorSetLayoutBinding dd_bb_binding{};
+    dd_bb_binding.binding = 0;
+    dd_bb_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    dd_bb_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    dd_bb_binding.descriptorCount = Scene::kMaxBillboards;
+    dd_bb_binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutBinding dd_bindings[] = {dd_bb_binding};
+
+    layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_ci.pNext = nullptr;
+    layout_ci.flags = 0;
+    layout_ci.bindingCount = 1;
+    layout_ci.pBindings = dd_bindings;
+    create_result = vkCreateDescriptorSetLayout(
+        device_, &layout_ci, nullptr, &debugdraw_descriptor_set_layout_);
+    ASSERT(create_result == VK_SUCCESS,
+           "Failed to create Debug Draw descriptor set layout!");
+  }
 }
 void Application::Renderer::CreateDescriptorPool() {
   uint32_t frame_count = frame_count_;
@@ -220,7 +242,7 @@ void Application::Renderer::CreateDescriptorPool() {
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
       frame_count * (Scene::kMaxDirectionalLights + Scene::kMaxTextures +
-                     Scene::kMaxCubemaps + 6);
+                     Scene::kMaxCubemaps + Scene::kMaxBillboards + 6);
   VkDescriptorPoolSize storage_size;
   storage_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
   storage_size.descriptorCount = (frame_count * 2);
@@ -230,7 +252,7 @@ void Application::Renderer::CreateDescriptorPool() {
   pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   pool_ci.pNext = nullptr;
   pool_ci.flags = 0;
-  pool_ci.maxSets = frame_count*5;
+  pool_ci.maxSets = frame_count*6;
   pool_ci.poolSizeCount = 3;
   pool_ci.pPoolSizes = pool_sizes;
   VkResult create_result =
@@ -288,6 +310,17 @@ void Application::Renderer::CreateDescriptorSets() {
                                           ssr_descriptor_sets_.data());
   ASSERT(alloc_result == VK_SUCCESS,
          "Failed to create SSR descriptor set!");
+
+  if (debug_enabled_) {
+    layouts.clear();
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++)
+      layouts.push_back(debugdraw_descriptor_set_layout_);
+    set_ai.pSetLayouts = layouts.data();
+    debugdraw_descriptor_sets_.resize(frame_count_);
+    alloc_result =
+        vkAllocateDescriptorSets(device_, &set_ai, debugdraw_descriptor_sets_.data());
+    ASSERT(alloc_result == VK_SUCCESS, "Failed to create Debug Draw descriptor set!");
+  }
 }
 
 void Application::Renderer::WriteFixedSizeDescriptorSets() {
@@ -422,6 +455,29 @@ void Application::Renderer::WriteFixedSizeDescriptorSets() {
   }
   vkUpdateDescriptorSets(device_, frame_count_, set_wis.data(), 0, nullptr);
 
+  // Debug Draw: Billboards
+  {
+    std::vector<std::vector<VkDescriptorImageInfo>> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].resize(Scene::kMaxBillboards);
+      for (uint32_t bill_i = 0; bill_i < Scene::kMaxBillboards; bill_i++) {
+        infos[frame_i][bill_i].sampler = texture_sampler_;
+        infos[frame_i][bill_i].imageView = billboard_image_views_[bill_i];
+        infos[frame_i][bill_i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      }
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = debugdraw_descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 0;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = Scene::kMaxBillboards;
+      writes[frame_i].descriptorType =
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      writes[frame_i].pImageInfo = infos[frame_i].data();
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
 }
 
 void Application::Renderer::WriteResizeableDescriptorSets() {

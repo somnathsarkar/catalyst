@@ -69,7 +69,8 @@ void EditorScript::UpdateSelection(
             parent_transform * dd_object->transform_.GetTransformationMatrix();
         glm::vec3 world_pos = object_transform[3];
         catalyst::DebugDrawBillboard* dd_billboard =
-            new catalyst::DebugDrawBillboard(world_pos);
+            new catalyst::DebugDrawBillboard(
+                world_pos, catalyst::BillboardType::kDirectionalLight);
         scene.debugdraw_objects_.push_back(dd_billboard);
       }
     }

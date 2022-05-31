@@ -72,6 +72,21 @@ function(target_cubemaps TARGET)
 	endforeach()
 endfunction()
 
+function(add_billboard BILLBOARD_NAME)
+	set(INPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/billboards/${BILLBOARD_NAME}")
+	set(OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/billboards/${BILLBOARD_NAME}")
+	get_filename_component(OUTPUT_DIR ${OUTPUT_PATH} DIRECTORY)
+	add_custom_target(
+		${BILLBOARD_NAME} ${CMAKE_COMMAND} -E make_directory "${OUTPUT_DIR}" COMMAND ${CMAKE_COMMAND} -E copy ${INPUT_PATH} ${OUTPUT_PATH}
+	)
+endfunction()
+
+function(target_billboards TARGET)
+	foreach(BILLBOARD ${ARGN})
+		add_dependencies(${TARGET} ${BILLBOARD})
+	endforeach()
+endfunction()
+
 add_shader_pair("phong")
 add_shader_pair("pbr")
 add_shader_pair("debugdraw")
@@ -92,3 +107,5 @@ add_texture("white.png")
 
 add_cubemap("meadow/specular")
 add_cubemap("meadow/diffuse")
+
+add_billboard("sun.png")

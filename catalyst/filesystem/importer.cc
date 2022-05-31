@@ -91,7 +91,10 @@ const TextureData* TextureImporter::GetData() {
   ASSERT(data != nullptr, "No data loaded!");
   return data;
 }
-void TextureImporter::DestroyData() { delete data; }
+void TextureImporter::DestroyData() {
+  delete data;
+  data = nullptr;
+}
 TextureData::TextureData() : width(0),height(0),channels(0),data(nullptr) {}
 TextureData::~TextureData() {
   if (data != nullptr) {

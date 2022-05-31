@@ -241,6 +241,12 @@ class Application :: Renderer {
   std::vector<VkBuffer> ssr_uniform_;
   std::vector<VkDeviceMemory> ssr_uniform_memory_;
 
+  std::vector<VkImage> billboard_images_;
+  std::vector<VkImageView> billboard_image_views_;
+  std::vector<VkDeviceMemory> billboard_memory_;
+  VkDescriptorSetLayout debugdraw_descriptor_set_layout_;
+  std::vector<VkDescriptorSet> debugdraw_descriptor_sets_;
+
   QueueFamilyIndexCollection queue_family_indices_;
   VkQueue graphics_queue_;
   VkQueue compute_queue_;
@@ -371,6 +377,7 @@ class Application :: Renderer {
   void CreateTextureResources();
   void CreateCubemapResources();
   void CreateSkyboxResources();
+  void CreateBillboardResources();
 
   // Scene Resources
   void LoadSceneResources();
