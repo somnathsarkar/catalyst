@@ -205,7 +205,7 @@ void Application::Renderer::CreateDepthResources() {
     CreateImage(depth_images_[frame_i], depth_memory_[frame_i], 0,
                 depth_format_, depth_extent, 1, 1,
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
     CreateImageView(depth_image_views_[frame_i], depth_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, depth_format_,
                     VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -230,7 +230,7 @@ void Application::Renderer::CreateDirectionalShadowmapResources() {
                   shadowmap_extent, 1, 1,
                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                       VK_IMAGE_USAGE_SAMPLED_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
       CreateImageView(shadowmap_image_views_[frame_i][shadowmap_i],
                       shadowmap_images_[frame_i][shadowmap_i],
                       VK_IMAGE_VIEW_TYPE_2D, depth_format_,
@@ -268,7 +268,7 @@ void Application::Renderer::CreateTextureResources() {
                 VK_FORMAT_R8G8B8A8_SRGB, tex_extent,
                 Scene::kMaxTextureMipLevels, 1,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
     CreateImageView(texture_image_views_[tex_i], texture_images_[tex_i],
                     VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_SRGB,
                     VK_IMAGE_ASPECT_COLOR_BIT);
@@ -292,7 +292,7 @@ void Application::Renderer::CreateCubemapResources() {
                 VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, VK_FORMAT_R8G8B8A8_SRGB,
                 cubemap_extent, Scene::kMaxTextureMipLevels, 6,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
     CreateImageView(cubemap_image_views_[cmap_i], cubemap_images_[cmap_i],
                     VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_SRGB,
                     VK_IMAGE_ASPECT_COLOR_BIT);

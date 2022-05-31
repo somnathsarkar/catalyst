@@ -158,7 +158,7 @@ void Application::Renderer::LoadTextures() {
         staging_image, staging_image_memory, 0, VK_FORMAT_R8G8B8A8_SRGB,
         {tex_data->width, tex_data->height, 1}, 1, 1,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
 
     VkBufferImageCopy buffer_cp{};
     buffer_cp.bufferOffset = 0;
@@ -279,7 +279,7 @@ void Application::Renderer::LoadCubemaps() {
           staging_image, staging_image_memory, 0, VK_FORMAT_R8G8B8A8_SRGB,
           {tex_data->width, tex_data->height, 1}, 1, 1,
           VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
 
       VkBufferImageCopy buffer_cp{};
       buffer_cp.bufferOffset = 0;

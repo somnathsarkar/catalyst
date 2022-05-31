@@ -11,7 +11,7 @@ void Application::Renderer::CreateSsaoResources() {
   CreateImage(ssn_image_, ssn_memory_, 0, ssn_format_,
               {half_swapchain_extent_.width, half_swapchain_extent_.height, 1},
               1, 1, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
   CreateImageView(ssn_image_view_, ssn_image_, VK_IMAGE_VIEW_TYPE_2D,
                   ssn_format_, VK_IMAGE_ASPECT_COLOR_BIT);
   TransitionImageLayout(
@@ -127,11 +127,11 @@ void Application::Renderer::CreateSsaoResources() {
   ssao_image_views_.resize(frame_count_);
   ssao_memory_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
-    CreateImage(ssao_images_[frame_i], ssao_memory_[frame_i], 0,
-                ssao_format_,
-                {half_swapchain_extent_.width, half_swapchain_extent_.height, 1},
-                1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    CreateImage(
+        ssao_images_[frame_i], ssao_memory_[frame_i], 0, ssao_format_,
+        {half_swapchain_extent_.width, half_swapchain_extent_.height, 1}, 1, 1,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
     CreateImageView(ssao_image_views_[frame_i], ssao_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, ssao_format_,
                     VK_IMAGE_ASPECT_COLOR_BIT);

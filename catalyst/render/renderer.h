@@ -406,7 +406,8 @@ class Application :: Renderer {
                    VkImageCreateFlags flags, const VkFormat format,
                    const VkExtent3D extent, const uint32_t mip_levels,
                    const uint32_t array_layers, const VkImageUsageFlags usage,
-                   const VkMemoryPropertyFlags req_props);
+                   const VkMemoryPropertyFlags req_props,
+                   const VkSampleCountFlagBits samples);
   void CreateImageView(VkImageView& image_view, VkImage& image,
                        VkImageViewType type, const VkFormat format,
                        const VkImageAspectFlags aspect_flags);
