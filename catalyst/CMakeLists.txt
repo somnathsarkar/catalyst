@@ -56,6 +56,7 @@ target_shaders(catalyst "log_illuminance.comp" "reduce_illuminance.comp")
 target_models(catalyst "bun_zipper.obj" "teapot.obj")
 target_textures(catalyst "black.png" "white.png")
 target_cubemaps(catalyst "meadow/specular" "meadow/diffuse")
+target_billboards(catalyst "sun.png")
 
 if(MSVC)
   target_compile_options(catalyst PUBLIC "/Zi")

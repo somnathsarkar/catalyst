@@ -420,6 +420,7 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
       scene_->skyboxes_[0]->specular_intensity_;
   details.skybox_uniform.diffuse_intensity =
       scene_->skyboxes_[0]->diffuse_intensity_;
+  details.debugdraw_offset_ = 0;
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
   DrawSceneShadowmaps(cmd, image_i, details);
@@ -511,7 +512,7 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
 
   // Debug Draw
   if (debug_enabled_) {
-    DebugDrawScene(image_i);
+    DebugDrawScene(image_i, details);
   }
 }
 void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayout& layout,
@@ -547,40 +548,40 @@ void Application::Renderer::DrawSceneMeshes(VkCommandBuffer& cmd, VkPipelineLayo
     DrawSceneMeshes(cmd, layout, details, child, model_transform);
   }
 }
-void Application::Renderer::DebugDrawScene(uint32_t image_i) {
+void Application::Renderer::DebugDrawScene(uint32_t image_i, SceneDrawDetails& details) {
   VkCommandBuffer& cmd = command_buffers_[image_i];
   BeginDebugDrawRenderPass(cmd, image_i);
-  SceneDrawDetails dummy_details;
+  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          debugdraw_pipeline_layout_, 0, 1,
+                          &debugdraw_descriptor_sets_[image_i], 0, nullptr);
   for (const DebugDrawObject* debugdraw_object : scene_->debugdraw_objects_) {
     switch (debugdraw_object->type_) {
-      case DebugDrawType::kWireframe: {
-        VkDeviceSize vertex_offsets[] = {static_cast<uint64_t>(0)};
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          debugdraw_pipeline_);
-        vkCmdBindVertexBuffers(cmd, 0, 1, &vertex_buffer_, vertex_offsets);
-        const DebugDrawWireframe* wireframe =
-            reinterpret_cast<const DebugDrawWireframe*>(debugdraw_object);
-        DrawSceneMeshes(cmd, debugdraw_pipeline_layout_, dummy_details,
-                        wireframe->scene_object_,
-                        scene_->GetParentTransform(wireframe->scene_object_));
-        break;
-      }
       case DebugDrawType::kAABB: {
         const DebugDrawAABB* draw_aabb =
             static_cast<const DebugDrawAABB*>(debugdraw_object);
         const Aabb& aabb = draw_aabb->aabb_;
-        DebugDrawAabb(image_i, aabb);
+        DebugDrawSceneAabb(image_i, aabb, details);
         break;
       }
+      case DebugDrawType::kBillboard: {
+        const DebugDrawBillboard* draw_bb =
+            static_cast<const DebugDrawBillboard*>(debugdraw_object);
+        DebugDrawSceneBillboard(image_i, draw_bb, details);
+        break;
+      }
+      default:
+        ASSERT(false, "Unhandled Debug Draw type!");
+        break;
     }
   }
   vkCmdEndRenderPass(cmd);
 }
-void Application::Renderer::DebugDrawAabb(uint32_t image_i,
-                                          const Aabb& aabb) {
+void Application::Renderer::DebugDrawSceneAabb(uint32_t image_i,
+                                          const Aabb& aabb, SceneDrawDetails& details) {
   VkCommandBuffer& cmd = command_buffers_[image_i];
-  static auto BitmaskToVertex = [](uint32_t bm, const Aabb& aabb) -> Vertex {
-    Vertex a{};
+  static auto BitmaskToVertex = [](uint32_t bm,
+                                   const Aabb& aabb) -> DebugDrawVertex {
+    DebugDrawVertex a{};
     if (bm & (1 << 0))
       a.position.x = aabb.xmax;
     else
@@ -595,21 +596,24 @@ void Application::Renderer::DebugDrawAabb(uint32_t image_i,
       a.position.z = aabb.zmin;
     return a;
   };
-  std::vector<Vertex> vertices;
+  std::vector<DebugDrawVertex> vertices;
   for (uint32_t aabb_mask = 0; aabb_mask < (1 << 3); aabb_mask++) {
     for (uint32_t bit_i = 0; bit_i < 3; bit_i++) {
       if (aabb_mask & (1 << bit_i)) continue;
       uint32_t a = aabb_mask;
       uint32_t b = aabb_mask | (1 << bit_i);
-      Vertex v_a = BitmaskToVertex(a, aabb);
-      Vertex v_b = BitmaskToVertex(b, aabb);
+      DebugDrawVertex v_a = BitmaskToVertex(a, aabb);
+      DebugDrawVertex v_b = BitmaskToVertex(b, aabb);
       vertices.push_back(v_a);
       vertices.push_back(v_b);
     }
   }
   void* data;
   vkMapMemory(device_, debugdraw_memory_[image_i], 0, VK_WHOLE_SIZE, 0, &data);
-  memcpy(data, vertices.data(), static_cast<size_t>(vertices.size() * sizeof(Vertex)));
+  memcpy(static_cast<char*>(data) +
+             details.debugdraw_offset_ * sizeof(DebugDrawVertex),
+         vertices.data(),
+         static_cast<size_t>(vertices.size() * sizeof(DebugDrawVertex)));
   vkUnmapMemory(device_, debugdraw_memory_[image_i]);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                     debugdraw_lines_pipeline_);
@@ -618,10 +622,64 @@ void Application::Renderer::DebugDrawAabb(uint32_t image_i,
                      VK_SHADER_STAGE_VERTEX_BIT,
                      offsetof(PushConstantData, model_to_world_transform),
                      sizeof(glm::mat4), &identity);
+  uint32_t aabb_id = 0;
+  vkCmdPushConstants(
+      cmd, debugdraw_pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT,
+      offsetof(PushConstantData, material_id), sizeof(uint32_t), &aabb_id);
   VkDeviceSize vertex_offsets[] = {static_cast<uint64_t>(0)};
   vkCmdBindVertexBuffers(cmd, 0, 1, &debugdraw_buffer_[image_i],
                          vertex_offsets);
-  vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
+  vkCmdDraw(cmd, vertices.size(), 1, details.debugdraw_offset_, 0);
+  details.debugdraw_offset_ += static_cast<uint32_t>(vertices.size());
+}
+void Application::Renderer::DebugDrawSceneBillboard(
+    uint32_t image_i, const DebugDrawBillboard* billboard, SceneDrawDetails& details) {
+  static float kBillboardDim = 0.05f;
+  VkCommandBuffer& cmd = command_buffers_[image_i];
+  glm::vec4 world_pos = glm::vec4(billboard->position_,1.0f);
+  glm::vec4 view_pos =
+      details.push_constants.world_to_view_transform * world_pos;
+  glm::vec3 cp = view_pos / view_pos.w;
+  DebugDrawVertex bb_verts[4];
+  for (uint32_t i = 0; i < 4; i++) {
+    int xi = i / 2;
+    int yi = i % 2;
+    glm::vec2 offset(xi, yi);
+    offset = offset * 2.0f - 1.0f;
+    offset *= kBillboardDim / 2.0f;
+    bb_verts[i].position = cp + glm::vec3(offset.x, 0.0f, -offset.y);
+    bb_verts[i].uv = glm::vec2(xi, yi);
+  }
+  DebugDrawVertex bb_vert_buffer[] = {bb_verts[0], bb_verts[1], bb_verts[3],
+                             bb_verts[3], bb_verts[2], bb_verts[0]};
+
+  void* data;
+  vkMapMemory(device_, debugdraw_memory_[image_i], 0, VK_WHOLE_SIZE, 0, &data);
+  memcpy(static_cast<char*>(data)+details.debugdraw_offset_*sizeof(DebugDrawVertex), bb_vert_buffer, sizeof(bb_vert_buffer));
+  vkUnmapMemory(device_, debugdraw_memory_[image_i]);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    debugdraw_pipeline_);
+  glm::mat4 eye(1.0f);
+  uint32_t billboard_id = static_cast<uint32_t>(billboard->billboard_type_);
+  vkCmdPushConstants(cmd, debugdraw_pipeline_layout_,
+                     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData),
+                     &details.push_constants);
+  vkCmdPushConstants(cmd, debugdraw_pipeline_layout_,
+                     VK_SHADER_STAGE_VERTEX_BIT,
+                     offsetof(PushConstantData, model_to_world_transform),
+                     sizeof(glm::mat4), &eye);
+  vkCmdPushConstants(cmd, debugdraw_pipeline_layout_,
+                     VK_SHADER_STAGE_VERTEX_BIT,
+                     offsetof(PushConstantData, world_to_view_transform),
+                     sizeof(glm::mat4), &eye);
+  vkCmdPushConstants(
+      cmd, debugdraw_pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT,
+      offsetof(PushConstantData, material_id), sizeof(uint32_t), &billboard_id);
+  VkDeviceSize vertex_offsets[] = {0};
+  vkCmdBindVertexBuffers(cmd, 0, 1, &debugdraw_buffer_[image_i],
+                         vertex_offsets);
+  vkCmdDraw(cmd, 6, 1, details.debugdraw_offset_, 0);
+  details.debugdraw_offset_ += 6;
 }
 void Application::Renderer::DrawSceneShadowmaps(VkCommandBuffer& cmd,
                                                 uint32_t swapchain_image_i,

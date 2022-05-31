@@ -57,6 +57,9 @@ void Application::Renderer::StartUp() {
   CreateTextureResources();
   CreateCubemapResources();
   CreateSkyboxResources();
+  if (debug_enabled_) {
+    CreateBillboardResources();
+  }
   WriteFixedSizeDescriptorSets();
 
   WriteResizeableDescriptorSets();
@@ -125,6 +128,17 @@ void Application::Renderer::LateShutDown() {
   cubemap_images_.clear();
   cubemap_memory_.clear();
 
+  if (debug_enabled_) {
+    for (uint32_t bill_i = 0; bill_i < Scene::kMaxBillboards; bill_i++) {
+      vkDestroyImageView(device_, billboard_image_views_[bill_i], nullptr);
+      vkFreeMemory(device_, billboard_memory_[bill_i], nullptr);
+      vkDestroyImage(device_, billboard_images_[bill_i], nullptr);
+    }
+    billboard_image_views_.clear();
+    billboard_memory_.clear();
+    billboard_images_.clear();
+  }
+
   vkDestroyBuffer(device_, vertex_buffer_, nullptr);
   vkFreeMemory(device_, vertex_memory_, nullptr);
   vkDestroyBuffer(device_, index_buffer_, nullptr);
@@ -158,6 +172,10 @@ void Application::Renderer::LateShutDown() {
   vkDestroyDescriptorSetLayout(device_, illuminance_descriptor_set_layout_,
                                nullptr);
   vkDestroyDescriptorSetLayout(device_, ssr_descriptor_set_layout_, nullptr);
+  if (debug_enabled_) {
+    vkDestroyDescriptorSetLayout(device_, debugdraw_descriptor_set_layout_,
+                                 nullptr);
+  }
 
   // Destroy fixed size pipelines
   vkDestroyPipelineLayout(device_, shadowmap_pipeline_layout_, nullptr);

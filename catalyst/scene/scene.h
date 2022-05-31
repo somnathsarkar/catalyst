@@ -73,6 +73,8 @@ const class Scene {
   static const uint32_t kMaxTextureMipLevels = 12;
   static const uint32_t kMaxMaterials = 128;
   static const uint32_t kMaxCubemaps = 2;
+  static const uint32_t kMaxBillboards = 2;
+  static const uint32_t kMaxBillboardResolution = 512;
 
   SceneObject* root_;
   std::vector<Mesh*> meshes_;
