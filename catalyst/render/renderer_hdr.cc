@@ -8,6 +8,9 @@ void Application::Renderer::CreateHdrResources() {
   hdr_memory_.resize(frame_count_);
   hdr_tonemapping_buffers_.resize(frame_count_);
   hdr_tonemapping_memory_.resize(frame_count_);
+  hdr_msaa_images_.resize(frame_count_);
+  hdr_msaa_memory_.resize(frame_count_);
+  hdr_msaa_views_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     CreateImage(hdr_images_[frame_i], hdr_memory_[frame_i], 0, hdr_format_,
                 {swapchain_extent_.width, swapchain_extent_.height, 1}, 1, 1,
@@ -24,6 +27,14 @@ void Application::Renderer::CreateHdrResources() {
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    CreateImage(hdr_msaa_images_[frame_i], hdr_msaa_memory_[frame_i], 0,
+                hdr_format_,
+                {swapchain_extent_.width, swapchain_extent_.height, 1}, 1, 1,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_4_BIT);
+    CreateImageView(hdr_msaa_views_[frame_i], hdr_msaa_images_[frame_i],
+                    VK_IMAGE_VIEW_TYPE_2D, hdr_format_,
+                    VK_IMAGE_ASPECT_COLOR_BIT);
   }
 }
 void Application::Renderer::CreateHdrRenderPass() {

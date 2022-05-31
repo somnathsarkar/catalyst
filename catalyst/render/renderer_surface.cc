@@ -142,21 +142,9 @@ void Application::Renderer::CreateSwapchain() {
 
   swapchain_image_views_.clear();
   for (VkImage swapchain_image : swapchain_images_) {
-    VkImageViewCreateInfo image_view_ci{};
-    image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    image_view_ci.image = swapchain_image;
-    image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_ci.format = swapchain_image_format_;
-    image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_view_ci.subresourceRange.baseMipLevel = 0;
-    image_view_ci.subresourceRange.levelCount = 1;
-    image_view_ci.subresourceRange.baseArrayLayer = 0;
-    image_view_ci.subresourceRange.layerCount = 1;
     VkImageView image_view;
-    VkResult create_result =
-        vkCreateImageView(device_, &image_view_ci, nullptr, &image_view);
-    ASSERT(create_result == VK_SUCCESS,
-           "Failed to create swapchain image view!");
+    CreateImageView(image_view, swapchain_image, VK_IMAGE_VIEW_TYPE_2D,
+                    swapchain_image_format_, VK_IMAGE_ASPECT_COLOR_BIT);
     swapchain_image_views_.push_back(image_view);
   }
   frame_count_ = static_cast<uint32_t>(swapchain_images_.size());
@@ -197,6 +185,9 @@ void Application::Renderer::CreateDepthResources() {
   depth_images_.resize(frame_count_);
   depth_image_views_.resize(frame_count_);
   depth_memory_.resize(frame_count_);
+  depth_msaa_images_.resize(frame_count_);
+  depth_msaa_memory_.resize(frame_count_);
+  depth_msaa_views_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     VkExtent3D depth_extent;
     depth_extent.width = swapchain_extent_.width;
@@ -207,6 +198,13 @@ void Application::Renderer::CreateDepthResources() {
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
     CreateImageView(depth_image_views_[frame_i], depth_images_[frame_i],
+                    VK_IMAGE_VIEW_TYPE_2D, depth_format_,
+                    VK_IMAGE_ASPECT_DEPTH_BIT);
+    CreateImage(depth_msaa_images_[frame_i], depth_msaa_memory_[frame_i], 0,
+                depth_format_, depth_extent, 1, 1,
+                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_4_BIT);
+    CreateImageView(depth_msaa_views_[frame_i], depth_msaa_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, depth_format_,
                     VK_IMAGE_ASPECT_DEPTH_BIT);
   }
@@ -415,6 +413,12 @@ void Application::Renderer::DestroySwapchain() {
     vkDestroyImage(device_, ssr_images_[frame_i], nullptr);
     vkFreeMemory(device_, ssr_uniform_memory_[frame_i], nullptr);
     vkDestroyBuffer(device_, ssr_uniform_[frame_i], nullptr);
+    vkDestroyImageView(device_, depth_msaa_views_[frame_i], nullptr);
+    vkFreeMemory(device_, depth_msaa_memory_[frame_i], nullptr);
+    vkDestroyImage(device_, depth_msaa_images_[frame_i], nullptr);
+    vkDestroyImageView(device_, hdr_msaa_views_[frame_i], nullptr);
+    vkFreeMemory(device_, hdr_msaa_memory_[frame_i], nullptr);
+    vkDestroyImage(device_, hdr_msaa_images_[frame_i], nullptr);
   }
   vkDestroyImageView(device_, ssn_image_view_, nullptr);
   vkFreeMemory(device_, ssn_memory_, nullptr);
@@ -433,6 +437,12 @@ void Application::Renderer::DestroySwapchain() {
   ssr_image_views_.clear();
   ssr_images_.clear();
   ssr_memory_.clear();
+  hdr_msaa_images_.clear();
+  hdr_msaa_views_.clear();
+  hdr_msaa_memory_.clear();
+  depth_msaa_memory_.clear();
+  depth_msaa_views_.clear();
+  depth_msaa_images_.clear();
 
   rendered_frames_.clear();
   vkDestroySwapchainKHR(device_, swapchain_, nullptr);
