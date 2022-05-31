@@ -53,6 +53,12 @@ layout(binding = 6) uniform sampler2D ssao_map;
 
 layout(binding = 7) uniform sampler2D ssr_map;
 
+layout(binding = 8, set = 0, std140) uniform SettingsUniformType{
+    float shadowmap_bias;
+    int shadowmap_kernel_size;
+    float _pad[2];
+}settings_uniform;
+
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;
 layout(location = 2) in vec3 worldTangent;
@@ -164,8 +170,8 @@ void main() {
 
         // Shadow mapping
         float in_shadow = 0.0f;
-        float shadow_bias = 0.001f;
-        int shadow_kernel_dim = 4;
+        float shadow_bias = settings_uniform.shadowmap_bias;
+        int shadow_kernel_dim = settings_uniform.shadowmap_kernel_size;
         vec4 light_pos = light.light_to_clip_transform*light.world_to_light_transform*worldPos;
         vec4 light_pos_proj = light_pos/light_pos.w;
         light_pos_proj.xy = (light_pos_proj.xy+1.0f)/2.0f;

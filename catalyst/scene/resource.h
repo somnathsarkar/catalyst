@@ -89,6 +89,8 @@ class Settings : public Resource {
   float exposure_adjustment_;
   float ssr_step_size_;
   float ssr_thickness_;
+  float shadowmap_bias_;
+  int shadowmap_kernel_size_;
   Settings(Scene* scene, const std::string& name);
 };
 }  // namespace catalyst

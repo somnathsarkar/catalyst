@@ -83,6 +83,12 @@ void EditorWindow::QtWindow::QtPropertiesPanel::DisplayProperties(
         layout_->addRow(QString::fromStdString(prop->name_), field);
         break;
       }
+      case catalyst::PropertyType::kInteger: {
+        QtIntegerField* field = new QtIntegerField(
+            this, static_cast<catalyst::IntegerProperty*>(prop));
+        layout_->addRow(QString::fromStdString(prop->name_), field);
+        break;
+      }
       default:
         ASSERT(false, "Unhandled property type!");
         break;
@@ -171,6 +177,21 @@ void EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::
 void EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::ValueChanged(
   int v) {
   int new_value = GetPropertyIndex(v);
+  property_->setter_(new_value);
+}
+EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField::QtIntegerField(
+    QtPropertiesPanel* property_panel, catalyst::IntegerProperty* property)
+    : property_panel_(property_panel), property_(property) {
+  spinbox_ = new QSpinBox(this);
+  float initial_value = property_->getter_();
+  spinbox_->setMinimum(property_->min_value_);
+  spinbox_->setMaximum(property_->max_value_);
+  spinbox_->setValue(initial_value);
+  QObject::connect(spinbox_, &QSpinBox::valueChanged, this,
+                   &QtIntegerField::ValueChanged);
+}
+void EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField::ValueChanged(
+    int new_value) {
   property_->setter_(new_value);
 }
 }  // namespace editor
