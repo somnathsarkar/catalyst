@@ -165,12 +165,19 @@ void main() {
         // Shadow mapping
         float in_shadow = 0.0f;
         float shadow_bias = 0.001f;
+        int shadow_kernel_dim = 4;
         vec4 light_pos = light.light_to_clip_transform*light.world_to_light_transform*worldPos;
         vec4 light_pos_proj = light_pos/light_pos.w;
         light_pos_proj.xy = (light_pos_proj.xy+1.0f)/2.0f;
         light_pos_proj.z -= shadow_bias;
         vec2 shadowmap_size = 1.0f/textureSize(directional_shadow_map[light_i],0);
-        in_shadow = shadow_test(directional_shadow_map[light_i],shadowmap_size,light_pos_proj,vec2(0.0f,0.0f));
+        for(int xi = 0; xi<shadow_kernel_dim; xi++){
+            for(int yi = 0; yi<shadow_kernel_dim; yi++){
+                vec2 shadow_offset = vec2(xi,yi)-(shadow_kernel_dim-1.0f)/2.0f;
+                in_shadow += shadow_test(directional_shadow_map[light_i],shadowmap_size,light_pos_proj,shadow_offset);
+            }
+        }
+        in_shadow/=(shadow_kernel_dim*shadow_kernel_dim);
         currentColor+=in_shadow*((f_spec+f_diff)*vec3(light.color)*mu_i);
     }
     // Pass non-gamma corrected values to HDR framebuffer
