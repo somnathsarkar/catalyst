@@ -60,6 +60,13 @@ void Application::Renderer::CreateDescriptorSetLayout() {
   ssr_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
   ssr_binding.pImmutableSamplers = nullptr;
 
+  VkDescriptorSetLayoutBinding renderer_settings_binding{};
+  renderer_settings_binding.binding = 8;
+  renderer_settings_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  renderer_settings_binding.descriptorCount = 1;
+  renderer_settings_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  renderer_settings_binding.pImmutableSamplers = nullptr;
+
   VkDescriptorSetLayoutBinding bindings[] = {directional_light_binding,
                                              directional_shadow_binding,
                                              material_uniform_binding,
@@ -67,13 +74,14 @@ void Application::Renderer::CreateDescriptorSetLayout() {
                                              cubemap_binding,
                                              skybox_binding,
                                              ssao_binding,
-                                             ssr_binding};
+                                             ssr_binding,
+                                             renderer_settings_binding};
 
   VkDescriptorSetLayoutCreateInfo layout_ci{};
   layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   layout_ci.pNext = nullptr;
   layout_ci.flags = 0;
-  layout_ci.bindingCount = 8;
+  layout_ci.bindingCount = 9;
   layout_ci.pBindings = bindings;
   VkResult create_result = vkCreateDescriptorSetLayout(
       device_, &layout_ci, nullptr, &descriptor_set_layout_);
@@ -237,7 +245,7 @@ void Application::Renderer::CreateDescriptorPool() {
 
   VkDescriptorPoolSize uniform_size;
   uniform_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  uniform_size.descriptorCount = frame_count*6;
+  uniform_size.descriptorCount = frame_count*7;
   VkDescriptorPoolSize sampler_size;
   sampler_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   sampler_size.descriptorCount =
@@ -454,7 +462,25 @@ void Application::Renderer::WriteFixedSizeDescriptorSets() {
     set_wi.pBufferInfo = &set_bis[frame_i];
   }
   vkUpdateDescriptorSets(device_, frame_count_, set_wis.data(), 0, nullptr);
-
+  // Renderer Settings Uniform
+  {
+    std::vector<VkDescriptorBufferInfo> infos(frame_count_);
+    std::vector<VkWriteDescriptorSet> writes(frame_count_);
+    for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+      infos[frame_i].buffer = renderer_uniforms_[frame_i];
+      infos[frame_i].offset = 0;
+      infos[frame_i].range = VK_WHOLE_SIZE;
+      writes[frame_i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[frame_i].pNext = nullptr;
+      writes[frame_i].dstSet = descriptor_sets_[frame_i];
+      writes[frame_i].dstBinding = 8;
+      writes[frame_i].dstArrayElement = 0;
+      writes[frame_i].descriptorCount = 1;
+      writes[frame_i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writes[frame_i].pBufferInfo = &infos[frame_i];
+    }
+    vkUpdateDescriptorSets(device_, frame_count_, writes.data(), 0, nullptr);
+  }
   // Debug Draw: Billboards
   {
     std::vector<std::vector<VkDescriptorImageInfo>> infos(frame_count_);

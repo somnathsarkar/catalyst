@@ -57,6 +57,7 @@ void Application::Renderer::StartUp() {
   CreateTextureResources();
   CreateCubemapResources();
   CreateSkyboxResources();
+  CreateRendererSettingsResources();
   if (debug_enabled_) {
     CreateBillboardResources();
   }
@@ -138,6 +139,13 @@ void Application::Renderer::LateShutDown() {
     billboard_memory_.clear();
     billboard_images_.clear();
   }
+
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    vkFreeMemory(device_, renderer_uniform_memory_[frame_i], nullptr);
+    vkDestroyBuffer(device_, renderer_uniforms_[frame_i], nullptr);
+  }
+  renderer_uniform_memory_.clear();
+  renderer_uniforms_.clear();
 
   vkDestroyBuffer(device_, vertex_buffer_, nullptr);
   vkFreeMemory(device_, vertex_memory_, nullptr);

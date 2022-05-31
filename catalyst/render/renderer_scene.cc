@@ -421,6 +421,10 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
   details.skybox_uniform.diffuse_intensity =
       scene_->skyboxes_[0]->diffuse_intensity_;
   details.debugdraw_offset_ = 0;
+  details.renderer_uniform.shadowmap_bias =
+      scene_->settings_[0]->shadowmap_bias_;
+  details.renderer_uniform.shadowmap_kernel_size =
+      scene_->settings_[0]->shadowmap_kernel_size_;
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
   DrawSceneShadowmaps(cmd, image_i, details);
@@ -483,6 +487,13 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
               &skybox_uniform_data);
   memcpy(skybox_uniform_data, &details.skybox_uniform, sizeof(SkyboxUniform));
   vkUnmapMemory(device_, skybox_uniform_memory_[image_i]);
+
+  void* settings_data = nullptr;
+  vkMapMemory(device_, renderer_uniform_memory_[image_i], 0, VK_WHOLE_SIZE, 0,
+              &settings_data);
+  memcpy(settings_data, &details.renderer_uniform,
+         sizeof(details.renderer_uniform));
+  vkUnmapMemory(device_, renderer_uniform_memory_[image_i]);
 
   vkCmdBindVertexBuffers(cmd, 0, 1, &skybox_vertex_buffer_, vertex_offsets);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline_);

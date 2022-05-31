@@ -95,6 +95,11 @@ class Application :: Renderer {
     float thickness;
     float _pad[2];
   };
+  struct RendererSettingsUniform {
+    float shadowmap_bias;
+    int shadowmap_kernel_size;
+    float _pad[2];
+  };
   struct SceneDrawDetails {
     PushConstantData push_constants;
     DirectionalLightUniform directional_light_uniform;
@@ -102,6 +107,7 @@ class Application :: Renderer {
     SkyboxUniform skybox_uniform;
     TonemappingUniform tonemap_uniform;
     SsrUniform ssr_uniform;
+    RendererSettingsUniform renderer_uniform;
     uint32_t debugdraw_offset_;
   };
   struct SceneResourceDetails {
@@ -262,6 +268,9 @@ class Application :: Renderer {
   VkDescriptorSetLayout illuminance_descriptor_set_layout_;
   std::vector<VkDescriptorSet> illuminance_descriptor_sets_;
 
+  std::vector<VkBuffer> renderer_uniforms_;
+  std::vector<VkDeviceMemory> renderer_uniform_memory_;
+
   void CreateInstance();
 
   // Device Creation: rendermanager_device.cc
@@ -378,6 +387,7 @@ class Application :: Renderer {
   void CreateCubemapResources();
   void CreateSkyboxResources();
   void CreateBillboardResources();
+  void CreateRendererSettingsResources();
 
   // Scene Resources
   void LoadSceneResources();

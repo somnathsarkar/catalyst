@@ -127,7 +127,11 @@ Skybox::Skybox(Scene* scene, const std::string& name)
 }
 Settings::Settings(Scene* scene, const std::string& name)
     : Resource(scene, name, ResourceType::kSettings),
-      exposure_adjustment_(2.0f), ssr_step_size_(0.05f), ssr_thickness_(0.1f) {
+      exposure_adjustment_(2.0f),
+      ssr_step_size_(0.05f),
+      ssr_thickness_(0.1f),
+      shadowmap_bias_(0.05f),
+      shadowmap_kernel_size_(4) {
   property_manager_.AddFloatProperty(
       "Exposure Adjustment", Property::CreateFloatGetter(&exposure_adjustment_),
       Property::CreateFloatSetter(&exposure_adjustment_), 0.1f, 10.0f);
@@ -137,5 +141,12 @@ Settings::Settings(Scene* scene, const std::string& name)
   property_manager_.AddFloatProperty(
       "SSR Thickness", Property::CreateFloatGetter(&ssr_thickness_),
       Property::CreateFloatSetter(&ssr_thickness_), 0.0001f, 1.0f);
+  property_manager_.AddFloatProperty(
+      "Shadowmap Bias", Property::CreateFloatGetter(&shadowmap_bias_),
+      Property::CreateFloatSetter(&shadowmap_bias_), 0.0001f, 1.0f);
+  property_manager_.AddIntegerProperty(
+      "Shadowmap PCF Kernel Size",
+      Property::CreateIntegerGetter(&shadowmap_kernel_size_),
+      Property::CreateIntegerSetter(&shadowmap_kernel_size_), 1, 5);
 }
 }  // namespace catalyst

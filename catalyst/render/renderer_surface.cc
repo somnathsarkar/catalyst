@@ -342,6 +342,17 @@ void Application::Renderer::CreateSkyboxResources() {
   vkDestroyBuffer(device_, staging_buffer, nullptr);
   vkFreeMemory(device_, staging_memory, nullptr);
 }
+void Application::Renderer::CreateRendererSettingsResources() {
+  renderer_uniforms_.resize(frame_count_);
+  renderer_uniform_memory_.resize(frame_count_);
+  for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    CreateBuffer(renderer_uniforms_[frame_i], renderer_uniform_memory_[frame_i],
+                 sizeof(RendererSettingsUniform),
+                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  }
+}
 void Application::Renderer::DestroySwapchain() {
   vkDeviceWaitIdle(device_);
 

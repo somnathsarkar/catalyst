@@ -34,7 +34,7 @@ layout(binding = 0, set = 0, std140) uniform directional_light_uniform_block{
     int num_lights;
 }directional_light_uniform;
 
-layout(binding = 1) uniform sampler2D directional_shadow_map[16];
+layout(binding = 1) uniform sampler2DShadow directional_shadow_map[16];
 
 layout(binding = 2, set = 0, std140) uniform material_uniform_block{
     Material materials[128];
@@ -52,6 +52,12 @@ layout(binding = 5) uniform skybox_uniform_block{
 layout(binding = 6) uniform sampler2D ssao_map;
 
 layout(binding = 7) uniform sampler2D ssr_map;
+
+layout(binding = 8, set = 0, std140) uniform SettingsUniformType{
+    float shadowmap_bias;
+    int shadowmap_kernel_size;
+    float _pad[2];
+}settings_uniform;
 
 layout(location = 0) in vec4 worldPos;
 layout(location = 1) in vec3 worldNormal;
@@ -76,6 +82,10 @@ vec4 texture_gaussian(sampler2D tex, vec2 tex_coord){
         }
     }
     return ans;
+}
+
+float shadow_test(sampler2DShadow shadow_map, vec2 shadow_map_size, vec4 loc, vec2 offset){
+    return textureProj(shadow_map,vec4(loc.xy+offset*loc.w*shadow_map_size,loc.z,loc.w));
 }
 
 void main() {
@@ -160,15 +170,21 @@ void main() {
 
         // Shadow mapping
         float in_shadow = 0.0f;
-        float shadow_bias = 0.001f;
+        float shadow_bias = settings_uniform.shadowmap_bias;
+        int shadow_kernel_dim = settings_uniform.shadowmap_kernel_size;
         vec4 light_pos = light.light_to_clip_transform*light.world_to_light_transform*worldPos;
-        vec2 shadow_pos = (light_pos.st+1.0f)/2.0f;
-        vec4 shadow_sample = texture(directional_shadow_map[light_i],shadow_pos);
-        float shadow_depth = shadow_sample.r;
-        if(shadow_depth<light_pos.z-shadow_bias){
-            in_shadow=1.0f;
+        vec4 light_pos_proj = light_pos/light_pos.w;
+        light_pos_proj.xy = (light_pos_proj.xy+1.0f)/2.0f;
+        light_pos_proj.z -= shadow_bias;
+        vec2 shadowmap_size = 1.0f/textureSize(directional_shadow_map[light_i],0);
+        for(int xi = 0; xi<shadow_kernel_dim; xi++){
+            for(int yi = 0; yi<shadow_kernel_dim; yi++){
+                vec2 shadow_offset = vec2(xi,yi)-(shadow_kernel_dim-1.0f)/2.0f;
+                in_shadow += shadow_test(directional_shadow_map[light_i],shadowmap_size,light_pos_proj,shadow_offset);
+            }
         }
-        currentColor+=(1.0f-in_shadow)*((f_spec+f_diff)*vec3(light.color)*mu_i);
+        in_shadow/=(shadow_kernel_dim*shadow_kernel_dim);
+        currentColor+=in_shadow*((f_spec+f_diff)*vec3(light.color)*mu_i);
     }
     // Pass non-gamma corrected values to HDR framebuffer
     outColor = vec4(currentColor,1.0f);

@@ -16,6 +16,7 @@ class EditorWindow::QtWindow::QtPropertiesPanel final : public QWidget{
   class QtFloatField;
   class QtVec3Field;
   class QtNamedIndexField;
+  class QtIntegerField;
  public:
   explicit QtPropertiesPanel(QtWindow* window_);
   void Update();
@@ -66,6 +67,20 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField : public QWid
   QComboBox* combobox_;
   int GetPropertyIndex(int combobox_index);
   void SetComboBoxIndex(int property_index);
+
+ private slots:
+  void ValueChanged(int v);
+};
+class EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField
+    : public QWidget {
+ public:
+  QtIntegerField(QtPropertiesPanel* property_panel,
+                 catalyst::IntegerProperty* property);
+
+ private:
+  QtPropertiesPanel* property_panel_;
+  catalyst::IntegerProperty* property_;
+  QSpinBox* spinbox_;
 
  private slots:
   void ValueChanged(int v);
