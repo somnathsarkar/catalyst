@@ -11,11 +11,13 @@ namespace editor {
 EditorWindow::EditorWindow() : scene_(nullptr){}
 void EditorWindow::StartUp(int& argc, char** argv) {
   qapp_ = new QApplication(argc, argv);
+  // Load stylesheet if present
   QFile style_file("../assets/theme/style.qss");
-  ASSERT(style_file.exists(), "Could not load style file!");
-  style_file.open(QFile::ReadOnly | QFile::Text);
-  QTextStream style_stream(&style_file);
-  qapp_->setStyleSheet(style_stream.readAll());
+  if (style_file.exists()) {
+    style_file.open(QFile::ReadOnly | QFile::Text);
+    QTextStream style_stream(&style_file);
+    qapp_->setStyleSheet(style_stream.readAll());
+  }
   window_ = new QtWindow(this);
   window_->show();
   input_manager_ = new catalyst::InputManager();
