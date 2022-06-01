@@ -7,6 +7,7 @@
 #include <QSpinBox>
 #include <QLabel>
 #include <QComboBox>
+#include <QCheckBox>
 
 #include <catalyst/scene/propertymanager.h>
 #include <editor/window/qtwindow.h>
@@ -17,6 +18,7 @@ class EditorWindow::QtWindow::QtPropertiesPanel final : public QWidget{
   class QtVec3Field;
   class QtNamedIndexField;
   class QtIntegerField;
+  class QtBooleanField;
  public:
   explicit QtPropertiesPanel(QtWindow* window_);
   void Update();
@@ -84,5 +86,19 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField
 
  private slots:
   void ValueChanged(int v);
+};
+class EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField
+    : public QWidget {
+ public:
+  QtBooleanField(QtPropertiesPanel* property_panel,
+                 catalyst::BooleanProperty* property);
+
+ private:
+  QtPropertiesPanel* property_panel_;
+  catalyst::BooleanProperty* property_;
+  QCheckBox* checkbox_;
+  
+ private slots:
+  void ValueChanged(int state);
 };
 }

@@ -89,6 +89,12 @@ void EditorWindow::QtWindow::QtPropertiesPanel::DisplayProperties(
         layout_->addRow(QString::fromStdString(prop->name_), field);
         break;
       }
+      case catalyst::PropertyType::kBoolean: {
+        QtBooleanField* field = new QtBooleanField(
+            this, static_cast<catalyst::BooleanProperty*>(prop));
+        layout_->addRow(QString::fromStdString(prop->name_), field);
+        break;
+      }
       default:
         ASSERT(false, "Unhandled property type!");
         break;
@@ -192,6 +198,23 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField::QtIntegerField(
 }
 void EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField::ValueChanged(
     int new_value) {
+  property_->setter_(new_value);
+}
+EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField::QtBooleanField(
+    QtPropertiesPanel* property_panel, catalyst::BooleanProperty* property)
+    : property_panel_(property_panel), property_(property) {
+  checkbox_ = new QCheckBox("", this);
+  bool initial_value = property_->getter_();
+  if (initial_value)
+    checkbox_->setCheckState(Qt::CheckState::Checked);
+  else
+    checkbox_->setCheckState(Qt::CheckState::Unchecked);
+  QObject::connect(checkbox_, &QCheckBox::stateChanged, this,
+                   &QtBooleanField::ValueChanged);
+}
+void EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField::ValueChanged(
+  int state) {
+  bool new_value = (state == Qt::CheckState::Checked) ? true : false;
   property_->setter_(new_value);
 }
 }  // namespace editor

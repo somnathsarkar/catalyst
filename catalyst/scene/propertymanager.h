@@ -25,6 +25,8 @@ class Property {
   static std::function<void(int)> CreateIntegerSetter(int* int_field);
   static std::function<float(void)> CreateFloatGetter(float* field);
   static std::function<void(float)> CreateFloatSetter(float* field);
+  static std::function<bool(void)> CreateBooleanGetter(bool* field);
+  static std::function<void(bool)> CreateBooleanSetter(bool* field);
 
  protected:
   Property(const std::string& property_name, const PropertyType& property_type);
