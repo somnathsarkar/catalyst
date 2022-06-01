@@ -96,7 +96,7 @@ void Application::Renderer::CreateSkyboxPipeline() {
   multisample_state.sType =
       VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
   multisample_state.sampleShadingEnable = VK_FALSE;
-  multisample_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+  multisample_state.rasterizationSamples = msaa_samples_;
 
   VkPipelineDepthStencilStateCreateInfo depth_stencil_state{};
   depth_stencil_state.sType =

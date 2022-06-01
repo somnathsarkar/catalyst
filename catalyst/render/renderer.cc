@@ -212,7 +212,7 @@ void Application::Renderer::CreateInstance() {
   app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
   app_info.pEngineName = "Catalyst";
   app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-  app_info.apiVersion = VK_API_VERSION_1_0;
+  app_info.apiVersion = VK_API_VERSION_1_2;
 
   VkInstanceCreateInfo instance_ci{};
   instance_ci.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

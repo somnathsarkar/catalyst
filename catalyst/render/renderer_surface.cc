@@ -94,6 +94,7 @@ void Application::Renderer::CreateSwapchain() {
       image_count > swapchain_support.capabilities.maxImageCount) {
     image_count = swapchain_support.capabilities.maxImageCount;
   }
+  msaa_samples_ = VK_SAMPLE_COUNT_4_BIT;
 
   VkSwapchainCreateInfoKHR swapchain_ci{};
   swapchain_ci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -142,21 +143,9 @@ void Application::Renderer::CreateSwapchain() {
 
   swapchain_image_views_.clear();
   for (VkImage swapchain_image : swapchain_images_) {
-    VkImageViewCreateInfo image_view_ci{};
-    image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    image_view_ci.image = swapchain_image;
-    image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_ci.format = swapchain_image_format_;
-    image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_view_ci.subresourceRange.baseMipLevel = 0;
-    image_view_ci.subresourceRange.levelCount = 1;
-    image_view_ci.subresourceRange.baseArrayLayer = 0;
-    image_view_ci.subresourceRange.layerCount = 1;
     VkImageView image_view;
-    VkResult create_result =
-        vkCreateImageView(device_, &image_view_ci, nullptr, &image_view);
-    ASSERT(create_result == VK_SUCCESS,
-           "Failed to create swapchain image view!");
+    CreateImageView(image_view, swapchain_image, VK_IMAGE_VIEW_TYPE_2D,
+                    swapchain_image_format_, VK_IMAGE_ASPECT_COLOR_BIT);
     swapchain_image_views_.push_back(image_view);
   }
   frame_count_ = static_cast<uint32_t>(swapchain_images_.size());
@@ -197,6 +186,9 @@ void Application::Renderer::CreateDepthResources() {
   depth_images_.resize(frame_count_);
   depth_image_views_.resize(frame_count_);
   depth_memory_.resize(frame_count_);
+  depth_msaa_images_.resize(frame_count_);
+  depth_msaa_memory_.resize(frame_count_);
+  depth_msaa_views_.resize(frame_count_);
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
     VkExtent3D depth_extent;
     depth_extent.width = swapchain_extent_.width;
@@ -205,8 +197,15 @@ void Application::Renderer::CreateDepthResources() {
     CreateImage(depth_images_[frame_i], depth_memory_[frame_i], 0,
                 depth_format_, depth_extent, 1, 1,
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
     CreateImageView(depth_image_views_[frame_i], depth_images_[frame_i],
+                    VK_IMAGE_VIEW_TYPE_2D, depth_format_,
+                    VK_IMAGE_ASPECT_DEPTH_BIT);
+    CreateImage(depth_msaa_images_[frame_i], depth_msaa_memory_[frame_i], 0,
+                depth_format_, depth_extent, 1, 1,
+                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, msaa_samples_);
+    CreateImageView(depth_msaa_views_[frame_i], depth_msaa_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, depth_format_,
                     VK_IMAGE_ASPECT_DEPTH_BIT);
   }
@@ -230,7 +229,7 @@ void Application::Renderer::CreateDirectionalShadowmapResources() {
                   shadowmap_extent, 1, 1,
                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                       VK_IMAGE_USAGE_SAMPLED_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
       CreateImageView(shadowmap_image_views_[frame_i][shadowmap_i],
                       shadowmap_images_[frame_i][shadowmap_i],
                       VK_IMAGE_VIEW_TYPE_2D, depth_format_,
@@ -268,7 +267,7 @@ void Application::Renderer::CreateTextureResources() {
                 VK_FORMAT_R8G8B8A8_SRGB, tex_extent,
                 Scene::kMaxTextureMipLevels, 1,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
     CreateImageView(texture_image_views_[tex_i], texture_images_[tex_i],
                     VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_SRGB,
                     VK_IMAGE_ASPECT_COLOR_BIT);
@@ -292,7 +291,7 @@ void Application::Renderer::CreateCubemapResources() {
                 VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, VK_FORMAT_R8G8B8A8_SRGB,
                 cubemap_extent, Scene::kMaxTextureMipLevels, 6,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_1_BIT);
     CreateImageView(cubemap_image_views_[cmap_i], cubemap_images_[cmap_i],
                     VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_SRGB,
                     VK_IMAGE_ASPECT_COLOR_BIT);
@@ -415,6 +414,12 @@ void Application::Renderer::DestroySwapchain() {
     vkDestroyImage(device_, ssr_images_[frame_i], nullptr);
     vkFreeMemory(device_, ssr_uniform_memory_[frame_i], nullptr);
     vkDestroyBuffer(device_, ssr_uniform_[frame_i], nullptr);
+    vkDestroyImageView(device_, depth_msaa_views_[frame_i], nullptr);
+    vkFreeMemory(device_, depth_msaa_memory_[frame_i], nullptr);
+    vkDestroyImage(device_, depth_msaa_images_[frame_i], nullptr);
+    vkDestroyImageView(device_, hdr_msaa_views_[frame_i], nullptr);
+    vkFreeMemory(device_, hdr_msaa_memory_[frame_i], nullptr);
+    vkDestroyImage(device_, hdr_msaa_images_[frame_i], nullptr);
   }
   vkDestroyImageView(device_, ssn_image_view_, nullptr);
   vkFreeMemory(device_, ssn_memory_, nullptr);
@@ -435,6 +440,12 @@ void Application::Renderer::DestroySwapchain() {
   ssr_image_views_.clear();
   ssr_images_.clear();
   ssr_memory_.clear();
+  hdr_msaa_images_.clear();
+  hdr_msaa_views_.clear();
+  hdr_msaa_memory_.clear();
+  depth_msaa_memory_.clear();
+  depth_msaa_views_.clear();
+  depth_msaa_images_.clear();
 
   rendered_frames_.clear();
   vkDestroySwapchainKHR(device_, swapchain_, nullptr);
@@ -599,44 +610,76 @@ void Application::Renderer::CreateSyncObjects() {
   }
 }
 void Application::Renderer::CreateGraphicsRenderPass() {
-  VkAttachmentDescription color_attachment{};
+  VkAttachmentDescription2 color_attachment{};
+  color_attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+  color_attachment.pNext = nullptr;
   color_attachment.format = hdr_format_;
-  color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  color_attachment.samples = msaa_samples_;
   color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  color_attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+  color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-  VkAttachmentDescription depth_attachment{};
+  VkAttachmentDescription2 depth_attachment{};
+  depth_attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+  depth_attachment.pNext = nullptr;
   depth_attachment.format = depth_format_;
-  depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depth_attachment.samples = msaa_samples_;
   depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
   depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   depth_attachment.initialLayout =
-      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
   depth_attachment.finalLayout =
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-  VkAttachmentReference color_attachment_ref{};
+  VkAttachmentDescription2 color_resolve_attachment{};
+  color_resolve_attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+  color_resolve_attachment.pNext = nullptr;
+  color_resolve_attachment.format = hdr_format_;
+  color_resolve_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  color_resolve_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  color_resolve_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  color_resolve_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  color_resolve_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  color_resolve_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  color_resolve_attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+  VkAttachmentReference2 color_attachment_ref{};
+  color_attachment_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+  color_attachment_ref.pNext = nullptr;
   color_attachment_ref.attachment = 0;
   color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-  VkAttachmentReference depth_attachment_ref{};
+  VkAttachmentReference2 depth_attachment_ref{};
+  depth_attachment_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+  depth_attachment_ref.pNext = nullptr;
   depth_attachment_ref.attachment = 1;
   depth_attachment_ref.layout =
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-  VkSubpassDescription subpass{};
+  VkAttachmentReference2 color_resolve_attachment_ref{};
+  color_resolve_attachment_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+  color_resolve_attachment_ref.pNext = nullptr;
+  color_resolve_attachment_ref.attachment = 2;
+  color_resolve_attachment_ref.layout =
+      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkSubpassDescription2 subpass{};
+  subpass.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
+  subpass.pNext = nullptr;
   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
   subpass.colorAttachmentCount = 1;
   subpass.pColorAttachments = &color_attachment_ref;
   subpass.pDepthStencilAttachment = &depth_attachment_ref;
+  subpass.pResolveAttachments = &color_resolve_attachment_ref;
 
-  VkSubpassDependency dependency0{};
+  VkSubpassDependency2 dependency0{};
+  dependency0.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+  dependency0.pNext = nullptr;
   dependency0.srcSubpass = VK_SUBPASS_EXTERNAL;
   dependency0.dstSubpass = 0;
   dependency0.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -648,7 +691,9 @@ void Application::Renderer::CreateGraphicsRenderPass() {
                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   dependency0.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-  VkSubpassDependency dependency1{};
+  VkSubpassDependency2 dependency1{};
+  dependency1.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+  dependency1.pNext = nullptr;
   dependency1.srcSubpass = 0;
   dependency1.dstSubpass = VK_SUBPASS_EXTERNAL;
   dependency1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -656,11 +701,12 @@ void Application::Renderer::CreateGraphicsRenderPass() {
   dependency1.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   dependency1.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
-  VkSubpassDependency dependencies[] = {dependency0, dependency1};
+  VkSubpassDependency2 dependencies[] = {dependency0, dependency1};
 
-  std::array<VkAttachmentDescription, 2> attachments = {color_attachment,depth_attachment};
-  VkRenderPassCreateInfo render_pass_ci{};
-  render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  std::array<VkAttachmentDescription2, 3> attachments = {color_attachment,depth_attachment,color_resolve_attachment};
+  VkRenderPassCreateInfo2 render_pass_ci{};
+  render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+  render_pass_ci.pNext = nullptr;
   render_pass_ci.attachmentCount = static_cast<uint32_t>(attachments.size());
   render_pass_ci.pAttachments = attachments.data();
   render_pass_ci.subpassCount = 1;
@@ -668,10 +714,10 @@ void Application::Renderer::CreateGraphicsRenderPass() {
   render_pass_ci.dependencyCount = 2;
   render_pass_ci.pDependencies = dependencies;
 
-  VkResult create_result = vkCreateRenderPass(
-      device_, &render_pass_ci, nullptr, &render_pass_);
+  VkResult create_result =
+      vkCreateRenderPass2(device_, &render_pass_ci, nullptr, &render_pass_);
 
-  ASSERT(create_result == VK_SUCCESS, "Failed to create render pass!");
+  ASSERT(create_result == VK_SUCCESS, "Failed to create graphics render pass!");
 }
 void Application::Renderer::CreateGraphicsPipeline() {
   const std::vector<char> vert_shader_code =
@@ -794,7 +840,7 @@ void Application::Renderer::CreateGraphicsPipeline() {
   multisample_state.sType =
       VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
   multisample_state.sampleShadingEnable = VK_FALSE;
-  multisample_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+  multisample_state.rasterizationSamples = msaa_samples_;
 
   VkPipelineDepthStencilStateCreateInfo depth_stencil_state{};
   depth_stencil_state.sType =
@@ -869,7 +915,7 @@ void Application::Renderer::CreateGraphicsFramebuffers() {
   framebuffers_.resize(frame_count_);
 
   for (size_t i = 0; i < frame_count_; i++) {
-    std::array<VkImageView, 2> attachments = {hdr_image_views_[i], depth_image_views_[i]};
+    std::array<VkImageView, 3> attachments = {hdr_msaa_views_[i], depth_msaa_views_[i], hdr_image_views_[i]};
 
     VkFramebufferCreateInfo framebuffer_ci{};
     framebuffer_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -891,7 +937,7 @@ void Application::Renderer::BeginGraphicsRenderPass(VkCommandBuffer& cmd, uint32
   VkClearValue depth_clear;
   depth_clear.depthStencil.depth = 1.0f;
   depth_clear.depthStencil.stencil = 0;
-  VkClearValue clear_values[] = {color_clear, depth_clear};
+  VkClearValue clear_values[] = {color_clear, depth_clear, color_clear};
   VkRenderPassBeginInfo render_pass_bi{};
   render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   render_pass_bi.pNext = nullptr;
@@ -900,7 +946,7 @@ void Application::Renderer::BeginGraphicsRenderPass(VkCommandBuffer& cmd, uint32
   render_pass_bi.renderArea.extent = swapchain_extent_;
   render_pass_bi.renderArea.offset.x = 0;
   render_pass_bi.renderArea.offset.y = 0;
-  render_pass_bi.clearValueCount = 2;
+  render_pass_bi.clearValueCount = 3;
   render_pass_bi.pClearValues = clear_values;
   vkCmdBeginRenderPass(cmd, &render_pass_bi, VK_SUBPASS_CONTENTS_INLINE);
 }

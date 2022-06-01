@@ -271,6 +271,14 @@ class Application :: Renderer {
   std::vector<VkBuffer> renderer_uniforms_;
   std::vector<VkDeviceMemory> renderer_uniform_memory_;
 
+  VkSampleCountFlagBits msaa_samples_;
+  std::vector<VkImage> depth_msaa_images_;
+  std::vector<VkImageView> depth_msaa_views_;
+  std::vector<VkDeviceMemory> depth_msaa_memory_;
+  std::vector<VkImage> hdr_msaa_images_;
+  std::vector<VkImageView> hdr_msaa_views_;
+  std::vector<VkDeviceMemory> hdr_msaa_memory_;
+
   void CreateInstance();
 
   // Device Creation: rendermanager_device.cc
@@ -406,7 +414,8 @@ class Application :: Renderer {
                    VkImageCreateFlags flags, const VkFormat format,
                    const VkExtent3D extent, const uint32_t mip_levels,
                    const uint32_t array_layers, const VkImageUsageFlags usage,
-                   const VkMemoryPropertyFlags req_props);
+                   const VkMemoryPropertyFlags req_props,
+                   const VkSampleCountFlagBits samples);
   void CreateImageView(VkImageView& image_view, VkImage& image,
                        VkImageViewType type, const VkFormat format,
                        const VkImageAspectFlags aspect_flags);

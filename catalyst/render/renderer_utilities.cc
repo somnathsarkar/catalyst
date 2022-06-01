@@ -69,7 +69,7 @@ void Application::Renderer::CreateImage(
     VkImage& image, VkDeviceMemory& memory, VkImageCreateFlags flags,
     const VkFormat format, const VkExtent3D extent, const uint32_t mip_levels,
     const uint32_t array_layers, const VkImageUsageFlags usage,
-    const VkMemoryPropertyFlags req_props) {
+    const VkMemoryPropertyFlags req_props, const VkSampleCountFlagBits samples) {
   VkImageCreateInfo image_ci{};
   image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   image_ci.pNext = nullptr;
@@ -79,7 +79,7 @@ void Application::Renderer::CreateImage(
   image_ci.extent = extent;
   image_ci.mipLevels = mip_levels;
   image_ci.arrayLayers = array_layers;
-  image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
+  image_ci.samples = samples;
   image_ci.tiling = VK_IMAGE_TILING_OPTIMAL;
   image_ci.usage = usage;
   image_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
