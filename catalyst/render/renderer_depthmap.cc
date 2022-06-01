@@ -2,58 +2,105 @@
 
 namespace catalyst {
 void Application::Renderer::CreateDepthmapRenderPass() {
-    VkAttachmentDescription depth_attachment{};
-    depth_attachment.flags = 0;
-    depth_attachment.format = depth_format_;
-    depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depth_attachment.finalLayout =
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+  VkAttachmentDescription2 depth_attachment{};
+  depth_attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+  depth_attachment.pNext = nullptr;
+  depth_attachment.flags = 0;
+  depth_attachment.format = depth_format_;
+  depth_attachment.samples = msaa_samples_;
+  depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depth_attachment.finalLayout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference depth_ref{};
-    depth_ref.attachment = 0;
-    depth_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  VkAttachmentDescription2 depth_resolve_attachment{};
+  depth_resolve_attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+  depth_resolve_attachment.pNext = nullptr;
+  depth_resolve_attachment.flags = 0;
+  depth_resolve_attachment.format = depth_format_;
+  depth_resolve_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depth_resolve_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depth_resolve_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  depth_resolve_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depth_resolve_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depth_resolve_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depth_resolve_attachment.finalLayout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
-    VkSubpassDescription subpass{};
-    subpass.flags = 0;
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.inputAttachmentCount = 0;
-    subpass.pInputAttachments = nullptr;
-    subpass.colorAttachmentCount = 0;
-    subpass.pColorAttachments = nullptr;
-    subpass.pResolveAttachments = nullptr;
-    subpass.pDepthStencilAttachment = &depth_ref;
-    subpass.preserveAttachmentCount = 0;
-    subpass.pPreserveAttachments = nullptr;
+  VkAttachmentReference2 depth_ref{};
+  depth_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+  depth_ref.pNext = nullptr;
+  depth_ref.attachment = 0;
+  depth_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  depth_ref.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = 0;
-    dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+  VkAttachmentReference2 depth_resolve_ref{};
+  depth_resolve_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+  depth_resolve_ref.pNext = nullptr;
+  depth_resolve_ref.attachment = 1;
+  depth_resolve_ref.layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  depth_resolve_ref.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-    VkRenderPassCreateInfo render_pass_ci{};
-    render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    render_pass_ci.pNext = nullptr;
-    render_pass_ci.flags = 0;
-    render_pass_ci.attachmentCount = 1;
-    render_pass_ci.pAttachments = &depth_attachment;
-    render_pass_ci.subpassCount = 1;
-    render_pass_ci.pSubpasses = &subpass;
-    render_pass_ci.dependencyCount = 1;
-    render_pass_ci.pDependencies = &dependency;
-    VkResult create_result = vkCreateRenderPass(
-        device_, &render_pass_ci, nullptr, &depthmap_render_pass_);
-    ASSERT(create_result == VK_SUCCESS,
-           "Could not create depthmap render pass!");
+  VkSubpassDescriptionDepthStencilResolve depth_stencil_resolve{};
+  depth_stencil_resolve.sType =
+      VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE;
+  depth_stencil_resolve.pNext = nullptr;
+  depth_stencil_resolve.depthResolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+  depth_stencil_resolve.stencilResolveMode = VK_RESOLVE_MODE_NONE;
+  depth_stencil_resolve.pDepthStencilResolveAttachment = &depth_resolve_ref;
+
+  VkSubpassDescription2 subpass{};
+  subpass.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
+  subpass.pNext = &depth_stencil_resolve;
+  subpass.flags = 0;
+  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpass.viewMask = 0;
+  subpass.inputAttachmentCount = 0;
+  subpass.pInputAttachments = nullptr;
+  subpass.colorAttachmentCount = 0;
+  subpass.pColorAttachments = nullptr;
+  subpass.pResolveAttachments = nullptr;
+  subpass.pDepthStencilAttachment = &depth_ref;
+  subpass.preserveAttachmentCount = 0;
+  subpass.pPreserveAttachments = nullptr;
+
+  VkSubpassDependency2 dependency{};
+  dependency.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+  dependency.pNext = nullptr;
+  dependency.srcSubpass = 0;
+  dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+  dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+                            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+                              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+  dependency.viewOffset = 0;
+
+  VkAttachmentDescription2 attachments[] = {depth_attachment,
+                                           depth_resolve_attachment};
+
+  VkRenderPassCreateInfo2 render_pass_ci{};
+  render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+  render_pass_ci.pNext = nullptr;
+  render_pass_ci.flags = 0;
+  render_pass_ci.attachmentCount = 2;
+  render_pass_ci.pAttachments = attachments;
+  render_pass_ci.subpassCount = 1;
+  render_pass_ci.pSubpasses = &subpass;
+  render_pass_ci.dependencyCount = 1;
+  render_pass_ci.pDependencies = &dependency;
+  render_pass_ci.correlatedViewMaskCount = 0;
+  render_pass_ci.pCorrelatedViewMasks = nullptr;
+  VkResult create_result = vkCreateRenderPass2(device_, &render_pass_ci,
+                                               nullptr, &depthmap_render_pass_);
+  ASSERT(create_result == VK_SUCCESS,
+          "Could not create depthmap render pass!");
 }
 
 void Application::Renderer::CreateDepthmapPipeline() {
@@ -176,7 +223,7 @@ void Application::Renderer::CreateDepthmapPipeline() {
   multisample_state.sType =
       VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
   multisample_state.sampleShadingEnable = VK_FALSE;
-  multisample_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+  multisample_state.rasterizationSamples = msaa_samples_;
 
   VkPipelineDepthStencilStateCreateInfo depth_stencil_state{};
   depth_stencil_state.sType =
@@ -250,13 +297,15 @@ void Application::Renderer::CreateDepthmapFramebuffers() {
   depthmap_framebuffers_.resize(frame_count_);
   VkFramebufferCreateInfo framebuffer_ci{};
   for (uint32_t frame_i = 0; frame_i < frame_count_; frame_i++) {
+    VkImageView attachments[] = {depth_msaa_views_[frame_i],
+                                 depth_image_views_[frame_i]};
     VkFramebufferCreateInfo framebuffer_ci{};
     framebuffer_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebuffer_ci.pNext = nullptr;
     framebuffer_ci.flags = 0;
     framebuffer_ci.renderPass = depthmap_render_pass_;
-    framebuffer_ci.attachmentCount = 1;
-    framebuffer_ci.pAttachments = &depth_image_views_[frame_i];
+    framebuffer_ci.attachmentCount = 2;
+    framebuffer_ci.pAttachments = attachments;
     framebuffer_ci.width = swapchain_extent_.width;
     framebuffer_ci.height = swapchain_extent_.height;
     framebuffer_ci.layers = 1;
@@ -273,7 +322,7 @@ void Application::Renderer::BeginDepthmapRenderPass(VkCommandBuffer& cmd,
   VkClearValue depth_clear;
   depth_clear.depthStencil.depth = 1.0f;
   depth_clear.depthStencil.stencil = 0;
-  VkClearValue clear_values[] = {depth_clear};
+  VkClearValue clear_values[] = {depth_clear,depth_clear};
   VkRenderPassBeginInfo render_pass_bi{};
   render_pass_bi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   render_pass_bi.pNext = nullptr;
@@ -282,7 +331,7 @@ void Application::Renderer::BeginDepthmapRenderPass(VkCommandBuffer& cmd,
   render_pass_bi.renderArea.extent = swapchain_extent_;
   render_pass_bi.renderArea.offset.x = 0;
   render_pass_bi.renderArea.offset.y = 0;
-  render_pass_bi.clearValueCount = 1;
+  render_pass_bi.clearValueCount = 2;
   render_pass_bi.pClearValues = clear_values;
   vkCmdBeginRenderPass(cmd, &render_pass_bi, VK_SUBPASS_CONTENTS_INLINE);
 }

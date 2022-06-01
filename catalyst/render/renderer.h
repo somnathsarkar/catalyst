@@ -271,6 +271,7 @@ class Application :: Renderer {
   std::vector<VkBuffer> renderer_uniforms_;
   std::vector<VkDeviceMemory> renderer_uniform_memory_;
 
+  VkSampleCountFlagBits msaa_samples_;
   std::vector<VkImage> depth_msaa_images_;
   std::vector<VkImageView> depth_msaa_views_;
   std::vector<VkDeviceMemory> depth_msaa_memory_;

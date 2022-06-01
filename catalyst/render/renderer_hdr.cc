@@ -31,7 +31,7 @@ void Application::Renderer::CreateHdrResources() {
                 hdr_format_,
                 {swapchain_extent_.width, swapchain_extent_.height, 1}, 1, 1,
                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SAMPLE_COUNT_4_BIT);
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, msaa_samples_);
     CreateImageView(hdr_msaa_views_[frame_i], hdr_msaa_images_[frame_i],
                     VK_IMAGE_VIEW_TYPE_2D, hdr_format_,
                     VK_IMAGE_ASPECT_COLOR_BIT);
@@ -57,7 +57,7 @@ void Application::Renderer::CreateHdrRenderPass() {
   depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  depth_attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  depth_attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
   depth_attachment.finalLayout =
       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -83,6 +83,19 @@ void Application::Renderer::CreateHdrRenderPass() {
 
   VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
 
+  VkSubpassDependency dependency{};
+  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+  dependency.dstSubpass = 0;
+  dependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+                            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+                             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
   VkRenderPassCreateInfo render_pass_ci{};
   render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   render_pass_ci.pNext = nullptr;
@@ -91,8 +104,8 @@ void Application::Renderer::CreateHdrRenderPass() {
   render_pass_ci.pAttachments = attachments;
   render_pass_ci.subpassCount = 1;
   render_pass_ci.pSubpasses = &subpass;
-  render_pass_ci.dependencyCount = 0;
-  render_pass_ci.pDependencies = nullptr;
+  render_pass_ci.dependencyCount = 1;
+  render_pass_ci.pDependencies = &dependency;
   VkResult create_result =
       vkCreateRenderPass(device_, &render_pass_ci, nullptr, &hdr_render_pass_);
   ASSERT(create_result == VK_SUCCESS, "Could not create HDR render pass!");
