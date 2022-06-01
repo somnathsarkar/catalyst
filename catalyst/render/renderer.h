@@ -98,7 +98,8 @@ class Application :: Renderer {
   struct RendererSettingsUniform {
     float shadowmap_bias;
     int shadowmap_kernel_size;
-    float _pad[2];
+    int ssao_enabled;
+    int ssr_enabled;
   };
   struct SceneDrawDetails {
     PushConstantData push_constants;

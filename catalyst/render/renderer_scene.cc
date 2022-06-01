@@ -425,6 +425,8 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
       scene_->settings_[0]->shadowmap_bias_;
   details.renderer_uniform.shadowmap_kernel_size =
       scene_->settings_[0]->shadowmap_kernel_size_;
+  details.renderer_uniform.ssao_enabled = scene_->settings_[0]->ssao_enabled_;
+  details.renderer_uniform.ssr_enabled = scene_->settings_[0]->ssr_enabled_;
   DrawScenePrePass(cmd, details, scene_->root_, glm::mat4(1.0f));
 
   DrawSceneShadowmaps(cmd, image_i, details);
@@ -447,8 +449,10 @@ void Application::Renderer::DrawScene(uint32_t image_i) {
                           &ssao_descriptor_sets_[image_i], 0, nullptr);
   BeginSsaoRenderPass(cmd, image_i);
   vkCmdBindVertexBuffers(cmd, 0, 1, &skybox_vertex_buffer_, vertex_offsets);
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ssao_pipeline_);
-  vkCmdDraw(cmd, 6, 1, 0, 0);
+  if (details.renderer_uniform.ssao_enabled) {
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ssao_pipeline_);
+    vkCmdDraw(cmd, 6, 1, 0, 0);
+  }
   vkCmdEndRenderPass(cmd);
 
   // SSR Pass

@@ -279,7 +279,8 @@ void Application::Renderer::ComputeSsrMap(VkCommandBuffer& cmd,
   // Clear SSR map
   BeginSsrRenderPass(cmd, image_i);
   // If previous frame is not available (for eg, due to resizing), stop here
-  if (!rendered_frames_[prev_image_i]) {
+  if (!rendered_frames_[prev_image_i] ||
+      !details.renderer_uniform.ssr_enabled) {
     vkCmdEndRenderPass(cmd);
     return;
   }
