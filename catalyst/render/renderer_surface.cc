@@ -419,6 +419,8 @@ void Application::Renderer::DestroySwapchain() {
   vkDestroyImageView(device_, ssn_image_view_, nullptr);
   vkFreeMemory(device_, ssn_memory_, nullptr);
   vkDestroyImage(device_, ssn_image_, nullptr);
+  vkFreeMemory(device_, ssao_sample_memory_, nullptr);
+  vkDestroyBuffer(device_, ssao_sample_uniform_, nullptr);
   depth_image_views_.clear();
   depth_memory_.clear();
   depth_images_.clear();
