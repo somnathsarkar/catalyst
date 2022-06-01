@@ -106,6 +106,16 @@ std::function<void(float)> Property::CreateFloatSetter(float* field) {
   };
   return setter;
 }
+std::function<bool(void)> Property::CreateBooleanGetter(bool* field) {
+  std::function<bool(void)> getter = [field]() -> bool { return *field; };
+  return getter;
+}
+std::function<void(bool)> Property::CreateBooleanSetter(bool* field) {
+  std::function<void(bool)> setter = [field](bool new_value) -> void {
+    *field = new_value;
+  };
+  return setter;
+}
 Property::Property(const std::string& property_name,
                    const PropertyType& property_type) : name_(property_name),type_(property_type) {}
 BooleanProperty::BooleanProperty(const std::string& property_name,

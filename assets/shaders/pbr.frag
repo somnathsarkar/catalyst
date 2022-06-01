@@ -56,7 +56,8 @@ layout(binding = 7) uniform sampler2D ssr_map;
 layout(binding = 8, set = 0, std140) uniform SettingsUniformType{
     float shadowmap_bias;
     int shadowmap_kernel_size;
-    float _pad[2];
+    int ssao_enabled;
+    int ssr_enabled;
 }settings_uniform;
 
 layout(location = 0) in vec4 worldPos;
@@ -115,13 +116,17 @@ void main() {
     vec3 R = normalize(reflect(-v,n));
     
     vec2 screen_pos = (clipPos.xy/clipPos.w+1.0f)/2.0f;
-    vec3 ssao_sample = texture_gaussian(ssao_map,screen_pos).rgb;
+    vec3 ssao_sample = vec3(1.0f);
     if(material.ao_texture_id>-1)
         ssao_sample = texture(textures[material.ao_texture_id],texCoords).rgb;
+    else if(settings_uniform.ssao_enabled>0)
+        ssao_sample = texture_gaussian(ssao_map,screen_pos).rgb;
     float roughness_mip = (roughness*MAX_MIP_LEVEL);
 
     // GI Specular component
-    vec3 ssr_sample = ssao_sample*texture_gaussian(ssr_map,screen_pos).rgb;
+    vec3 ssr_sample = vec3(0.0f);
+    if(settings_uniform.ssr_enabled>0)
+        ssr_sample = ssao_sample*texture_gaussian(ssr_map,screen_pos).rgb;
     currentColor += (1.0f-roughness)*ssr_sample;
     
     // Environmental IBL, Specular component

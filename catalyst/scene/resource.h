@@ -91,6 +91,8 @@ class Settings : public Resource {
   float ssr_thickness_;
   float shadowmap_bias_;
   int shadowmap_kernel_size_;
+  bool ssao_enabled_;
+  bool ssr_enabled_;
   Settings(Scene* scene, const std::string& name);
 };
 }  // namespace catalyst
