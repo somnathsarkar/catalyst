@@ -1,10 +1,10 @@
 ﻿add_library(catalyst)
 
+find_package(Vulkan)
 cmake_path(GET CMAKE_CURRENT_SOURCE_DIR PARENT_PATH PARENT_DIR)
 target_include_directories(catalyst PUBLIC ${PARENT_DIR})
-target_include_directories(catalyst PUBLIC "C:/Dev/VulkanSDK/1.3.204.0/Include" "../external/glm" "../external/glfw-3.3.7/include" "../external/assimp/include")
-target_link_directories(catalyst PUBLIC "C:/Dev/VulkanSDK/1.3.204.0/Lib" "C:/Dev/glfw-3.3.6.bin.WIN64/lib-vc2019")
-target_link_libraries(catalyst PUBLIC "vulkan-1.lib" "glfw" ${GLFW_LIBRARIES} "assimp")
+target_include_directories(catalyst PUBLIC "${Vulkan_INCLUDE_DIRS}" "../external/glm" "../external/glfw-3.3.7/include" "../external/assimp/include")
+target_link_libraries(catalyst PUBLIC "${Vulkan_LIBRARIES}" "glfw" ${GLFW_LIBRARIES} "assimp")
 target_compile_features(catalyst PUBLIC cxx_std_17)
 
 target_sources(catalyst PRIVATE 

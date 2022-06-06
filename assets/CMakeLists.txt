@@ -1,5 +1,6 @@
+find_package(Vulkan)
 function(add_shader SHADER_FILENAME)
-	set(GLSLC "C:/Dev/VulkanSDK/1.3.204.0/Bin/glslc.exe")
+	set(GLSLC ${Vulkan_GLSLC_EXECUTABLE})
 	set(INPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${SHADER_FILENAME}")
 	set(OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/shaders/${SHADER_FILENAME}.spv")
 	get_filename_component(OUTPUT_DIR ${OUTPUT_PATH} DIRECTORY)
