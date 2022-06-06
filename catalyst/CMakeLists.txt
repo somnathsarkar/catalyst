@@ -2,9 +2,9 @@
 
 cmake_path(GET CMAKE_CURRENT_SOURCE_DIR PARENT_PATH PARENT_DIR)
 target_include_directories(catalyst PUBLIC ${PARENT_DIR})
-target_include_directories(catalyst PUBLIC "C:/Dev/VulkanSDK/1.3.204.0/Include" "C:/Dev/glm" "C:/Dev/assimp/include" "C:/Dev/glfw-3.3.6.bin.WIN64/include")
+target_include_directories(catalyst PUBLIC "C:/Dev/VulkanSDK/1.3.204.0/Include" "C:/Dev/glm" "C:/Dev/assimp/include" "../external/glfw-3.3.7/include")
 target_link_directories(catalyst PUBLIC "C:/Dev/VulkanSDK/1.3.204.0/Lib" "C:/Dev/assimp/lib/Debug" "C:/Dev/glfw-3.3.6.bin.WIN64/lib-vc2019")
-target_link_libraries(catalyst PUBLIC "vulkan-1.lib" "glfw3.lib" "assimp-vc142-mtd.lib")
+target_link_libraries(catalyst PUBLIC "vulkan-1.lib" "assimp-vc142-mtd.lib" "glfw" ${GLFW_LIBRARIES})
 target_compile_features(catalyst PUBLIC cxx_std_17)
 
 target_sources(catalyst PRIVATE 
