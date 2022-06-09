@@ -85,10 +85,6 @@ vec4 texture_gaussian(sampler2D tex, vec2 tex_coord){
     return ans;
 }
 
-float shadow_test(sampler2DShadow shadow_map, vec2 shadow_map_size, vec4 loc, vec2 offset){
-    return textureProj(shadow_map,vec4(loc.xy+offset*loc.w*shadow_map_size,loc.z,loc.w));
-}
-
 void main() {
     Material material = material_uniform.materials[materialId];
     int specular_environment_map = skybox_uniform.skybox.specular_cubemap_id;
@@ -184,12 +180,16 @@ void main() {
         vec2 shadowmap_size = 1.0f/textureSize(directional_shadow_map[light_i],0);
         for(int xi = 0; xi<shadow_kernel_dim; xi++){
             for(int yi = 0; yi<shadow_kernel_dim; yi++){
-                vec2 shadow_offset = vec2(xi,yi)-(shadow_kernel_dim-1.0f)/2.0f;
-                in_shadow += shadow_test(directional_shadow_map[light_i],shadowmap_size,light_pos_proj,shadow_offset);
+                float half_kernel = (shadow_kernel_dim-1.0f)/2.0f;
+                vec2 shadow_offset = vec2(xi,yi)-half_kernel;
+                vec4 light_pos_offset = light_pos_proj;
+                light_pos_offset.xy+=shadow_offset*shadowmap_size*light_pos_proj.w;
+                float shadowmap_sample = textureProj(directional_shadow_map[light_i],light_pos_offset);
+                in_shadow += (1.0f-shadowmap_sample);
             }
         }
         in_shadow/=(shadow_kernel_dim*shadow_kernel_dim);
-        currentColor+=in_shadow*((f_spec+f_diff)*vec3(light.color)*mu_i);
+        currentColor+=(1.0f-in_shadow)*((f_spec+f_diff)*vec3(light.color)*mu_i);
     }
     // Pass non-gamma corrected values to HDR framebuffer
     outColor = vec4(currentColor,1.0f);

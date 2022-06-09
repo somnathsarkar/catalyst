@@ -130,7 +130,7 @@ Settings::Settings(Scene* scene, const std::string& name)
       exposure_adjustment_(2.0f),
       ssr_step_size_(0.05f),
       ssr_thickness_(0.1f),
-      shadowmap_bias_(0.05f),
+      shadowmap_bias_(0.01f),
       shadowmap_kernel_size_(4),
       ssao_enabled_(true),
       ssr_enabled_(false) {

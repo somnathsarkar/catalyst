@@ -539,6 +539,8 @@ void Application::Renderer::CreateSamplers() {
   sampler_ci.maxLod = 1.0f;
   sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
   sampler_ci.unnormalizedCoordinates = VK_FALSE;
+  sampler_ci.compareEnable = VK_TRUE;
+  sampler_ci.compareOp = VK_COMPARE_OP_LESS;
   VkResult create_result =
       vkCreateSampler(device_, &sampler_ci, nullptr, &shadowmap_sampler_);
   ASSERT(create_result == VK_SUCCESS, "Failed to create shadowmap sampler!");
