@@ -44,8 +44,8 @@ Material::Material(Scene* scene, const std::string& name)
     }
     return result;
   };
-  property_manager_.AddVec3Property("Albedo", color_getter, color_setter, 0.0f,
-                                    1.0f);
+  property_manager_.AddVec3Property("Albedo", color_getter, color_setter,
+                                    Vec3PropertyStyle::kColor, 0.0f, 1.0f);
   property_manager_.AddNamedIndexProperty(
       "Albedo Texture", Property::CreateIntegerGetter(&albedo_texture_id_),
       Property::CreateIntegerSetter(&albedo_texture_id_), texture_name_getter,
