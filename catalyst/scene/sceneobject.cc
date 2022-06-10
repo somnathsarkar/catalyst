@@ -29,10 +29,13 @@ SceneObject::SceneObject(Scene* scene, const std::string& name)
       [this](glm::vec3 new_value) -> void {
     this->transform_.SetScale(new_value);
   };
-  property_manager_.AddVec3Property("Translation", trans_getter, trans_setter, -1000.0f, 1000.0f);
-  property_manager_.AddVec3Property("Orientation", rot_getter, rot_setter, -90.0f, 90.0f);
-  property_manager_.AddVec3Property("Scale", scale_getter, scale_setter, 0.1f,
+  property_manager_.AddVec3Property("Translation", trans_getter, trans_setter,
+                                    Vec3PropertyStyle::kSpinbox, -1000.0f,
                                     1000.0f);
+  property_manager_.AddVec3Property("Orientation", rot_getter, rot_setter,
+                                    Vec3PropertyStyle::kSpinbox, -90.0f, 90.0f);
+  property_manager_.AddVec3Property("Scale", scale_getter, scale_setter,
+                                    Vec3PropertyStyle::kSpinbox, 0.1f, 1000.0f);
 }
 SceneObject::~SceneObject() {
   for (SceneObject* child:children_)
@@ -82,8 +85,8 @@ DirectionalLightObject::DirectionalLightObject(
     return this->cast_distance_;
   };
   type_ = SceneObjectType::kDirectionalLight;
-  property_manager_.AddVec3Property("Color", color_getter, color_setter, 0.0f,
-                                    1.0f);
+  property_manager_.AddVec3Property("Color", color_getter, color_setter,
+                                    Vec3PropertyStyle::kColor, 0.0f, 1.0f);
   property_manager_.AddFloatProperty("Cast Width", width_getter, width_setter,
                                      0.5f, 100.0f);
   property_manager_.AddFloatProperty("Cast Height", height_getter,

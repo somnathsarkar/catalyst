@@ -74,9 +74,9 @@ void PropertyManager::AddNamedIndexProperty(
 }
 void PropertyManager::AddVec3Property(
     const std::string& property_name, std::function<glm::vec3()> getter,
-    std::function<void(glm::vec3)> setter, float min_value, float max_value) {
+    std::function<void(glm::vec3)> setter, Vec3PropertyStyle style, float min_value, float max_value) {
   Vec3Property* prop =
-      new Vec3Property(property_name, getter, setter, min_value, max_value);
+      new Vec3Property(property_name, getter, setter, style, min_value, max_value);
   properties_.push_back(prop);
 }
 uint32_t PropertyManager::PropertyCount() const {
@@ -150,13 +150,14 @@ StringProperty::StringProperty(
 Vec3Property::Vec3Property(const std::string& property_name,
                            std::function<glm::vec3()> getter,
                            std::function<void(glm::vec3)> setter,
-                           float min_value, float max_value)
+                           Vec3PropertyStyle style, float min_value,
+                           float max_value)
     : Property(property_name, PropertyType::kVec3),
       getter_(getter),
       setter_(setter),
+      style_(style),
       min_value_(min_value),
-      max_value_(max_value)
-{}
+      max_value_(max_value) {}
 NamedIndexProperty::NamedIndexProperty(
     const std::string& property_name, std::function<int()> getter,
     std::function<void(int)> setter,

@@ -8,6 +8,8 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QColorDialog>
+#include <QPushButton>
 
 #include <catalyst/scene/propertymanager.h>
 #include <editor/window/qtwindow.h>
@@ -15,7 +17,8 @@
 namespace editor {
 class EditorWindow::QtWindow::QtPropertiesPanel final : public QWidget{
   class QtFloatField;
-  class QtVec3Field;
+  class QtVec3SpinboxField;
+  class QtVec3ColorField;
   class QtNamedIndexField;
   class QtIntegerField;
   class QtBooleanField;
@@ -42,11 +45,11 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtFloatField : public QWidget {
  private slots:
   void ValueChanged(double v);
 };
-class EditorWindow::QtWindow::QtPropertiesPanel::QtVec3Field : public QWidget {
+class EditorWindow::QtWindow::QtPropertiesPanel::QtVec3SpinboxField : public QWidget {
  public:
-  QtVec3Field(QtPropertiesPanel* property_panel,
+  QtVec3SpinboxField(QtPropertiesPanel* property_panel,
               catalyst::Vec3Property* property);
-  ~QtVec3Field();
+  ~QtVec3SpinboxField();
 
  private:
   QtPropertiesPanel* property_panel_;
@@ -57,6 +60,23 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtVec3Field : public QWidget {
 
  private slots:
   void ValueChanged(double v);
+};
+class EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField
+    : public QWidget {
+ public:
+  QtVec3ColorField(QtPropertiesPanel* property_panel,
+                     catalyst::Vec3Property* property);
+
+ private:
+  QtPropertiesPanel* property_panel_;
+  catalyst::Vec3Property* property_;
+  QPushButton* color_button;
+  QColorDialog* color_dialog;
+  glm::vec3 GetVec3(const QColor& color) const;
+
+ private slots:
+  void ValueChanged(QColor v);
+  void ButtonPressed();
 };
 class EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField : public QWidget {
  public:

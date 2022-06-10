@@ -72,9 +72,23 @@ void EditorWindow::QtWindow::QtPropertiesPanel::DisplayProperties(
         break;
       }
       case catalyst::PropertyType::kVec3: {
-        QtVec3Field* field =
-            new QtVec3Field(this, static_cast<catalyst::Vec3Property*>(prop));
-        layout_->addRow(QString::fromStdString(prop->name_), field);
+        catalyst::Vec3Property* vec3_prop =
+            static_cast<catalyst::Vec3Property*>(prop);
+        switch (vec3_prop->style_) {
+          case catalyst::Vec3PropertyStyle::kSpinbox: {
+            QtVec3SpinboxField* field = new QtVec3SpinboxField(this, vec3_prop);
+            layout_->addRow(QString::fromStdString(prop->name_), field);
+            break;
+          }
+          case catalyst::Vec3PropertyStyle::kColor: {
+            QtVec3ColorField* field = new QtVec3ColorField(this, vec3_prop);
+            layout_->addRow(QString::fromStdString(prop->name_), field);
+            break;
+          }
+          default:
+            ASSERT(false, "Unhandled Vec3 Property type!");
+            break;
+        }
         break;
       }
       case catalyst::PropertyType::kNamedIndex: {
@@ -101,7 +115,7 @@ void EditorWindow::QtWindow::QtPropertiesPanel::DisplayProperties(
     }
   }
 }
-EditorWindow::QtWindow::QtPropertiesPanel::QtVec3Field::QtVec3Field(
+EditorWindow::QtWindow::QtPropertiesPanel::QtVec3SpinboxField::QtVec3SpinboxField(
     QtPropertiesPanel* property_panel,
     catalyst::Vec3Property* property)
     : property_panel_(property_panel),property_(property) {
@@ -117,19 +131,19 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtVec3Field::QtVec3Field(
     spinboxes_[i].setValue(vec_array[i]);
     layout_->addWidget(&spinboxes_[i]);
     QObject::connect(&spinboxes_[i], &QDoubleSpinBox::valueChanged, this,
-                     &QtVec3Field::ValueChanged);
+                     &QtVec3SpinboxField::ValueChanged);
   }
 }
-EditorWindow::QtWindow::QtPropertiesPanel::QtVec3Field::~QtVec3Field() {
+EditorWindow::QtWindow::QtPropertiesPanel::QtVec3SpinboxField::~QtVec3SpinboxField() {
   delete[] spinboxes_;
 }
-glm::vec3 EditorWindow::QtWindow::QtPropertiesPanel::QtVec3Field::GetVec3()
+glm::vec3 EditorWindow::QtWindow::QtPropertiesPanel::QtVec3SpinboxField::GetVec3()
     const {
   return glm::vec3(static_cast<float>(spinboxes_[0].value()),
                    static_cast<float>(spinboxes_[1].value()),
                    static_cast<float>(spinboxes_[2].value()));
 }
-void EditorWindow::QtWindow::QtPropertiesPanel::QtVec3Field::ValueChanged(
+void EditorWindow::QtWindow::QtPropertiesPanel::QtVec3SpinboxField::ValueChanged(
   double v) {
   glm::vec3 current_value = GetVec3();
   property_->setter_(current_value);
@@ -216,5 +230,34 @@ void EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField::ValueChanged(
   int state) {
   bool new_value = (state == Qt::CheckState::Checked) ? true : false;
   property_->setter_(new_value);
+}
+EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::QtVec3ColorField(
+    QtPropertiesPanel* property_panel, catalyst::Vec3Property* property)
+    : property_panel_(property_panel), property_(property) {
+  color_button = new QPushButton("Change color...", this);
+  color_dialog = new QColorDialog(this);
+  glm::vec3 value = property_->getter_();
+  color_dialog->setCurrentColor(QColor::fromRgbF(value.r, value.g, value.b));
+  color_button->setText(
+      color_dialog->currentColor().name(QColor::NameFormat::HexRgb).toUpper());
+  QObject::connect(color_dialog, &QColorDialog::currentColorChanged, this,
+                   &QtVec3ColorField::ValueChanged);
+  QObject::connect(color_button, &QAbstractButton::released, this,
+                   &QtVec3ColorField::ButtonPressed);
+}
+glm::vec3 EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::GetVec3(const QColor& color)
+    const {
+  glm::vec3 ret = {color.redF(), color.greenF(), color.blueF()};
+  return ret;
+}
+void EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::ValueChanged(
+  QColor v) {
+  glm::vec3 new_color = GetVec3(v);
+  color_button->setText(v.name(QColor::NameFormat::HexRgb).toUpper());
+  property_->setter_(new_color);
+}
+void EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::
+ButtonPressed() {
+  color_dialog->open();
 }
 }  // namespace editor

@@ -79,19 +79,24 @@ class StringProperty : public Property {
                  std::function<std::string()> getter,
                  std::function<void(std::string)> setter);
 };
+enum class Vec3PropertyStyle : uint32_t {
+  kSpinbox = 0,
+  kColor = 1,
+};
 class Vec3Property : public Property {
   friend class PropertyManager;
  public:
   std::function<glm::vec3()> getter_;
   std::function<void(glm::vec3)> setter_;
+  Vec3PropertyStyle style_;
   float min_value_;
   float max_value_;
 
  protected:
   Vec3Property(const std::string& property_name,
                std::function<glm::vec3()> getter,
-               std::function<void(glm::vec3)> setter, float min_value = 0.0f,
-               float max_value = 100.0f);
+               std::function<void(glm::vec3)> setter, Vec3PropertyStyle style,
+               float min_value = 0.0f, float max_value = 100.0f);
 };
 enum class NamedIndexPropertyStyle {
   kDisallowNone = 0,
@@ -133,7 +138,8 @@ class PropertyManager {
   void AddVec3Property(const std::string& property_name,
                        std::function<glm::vec3()> getter,
                        std::function<void(glm::vec3)> setter,
-                       float min_value = 0.0f, float max_value = 100.0f);
+                       Vec3PropertyStyle style, float min_value = 0.0f,
+                       float max_value = 100.0f);
   void AddNamedIndexProperty(
       const std::string& property_name, std::function<int()> getter,
       std::function<void(int)> setter,
