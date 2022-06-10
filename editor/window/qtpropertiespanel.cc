@@ -252,7 +252,8 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::QtVec3ColorField(
   color_button = new QPushButton("Change color...", this);
   color_dialog = new QColorDialog(this);
   glm::vec3 value = property_->getter_();
-  color_dialog->setCurrentColor(QColor::fromRgbF(value.r, value.g, value.b));
+  QColor initial_color = QColor::fromRgbF(value.r, value.g, value.b);
+  UpdateButton(initial_color);
   color_button->setText(
       color_dialog->currentColor().name(QColor::NameFormat::HexRgb).toUpper());
   QObject::connect(color_dialog, &QColorDialog::currentColorChanged, this,
@@ -266,10 +267,18 @@ glm::vec3 EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::GetVec3(c
   glm::vec3 ret = {color.redF(), color.greenF(), color.blueF()};
   return ret;
 }
+void EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::UpdateButton(
+    const QColor& color){
+  QPixmap pixmap(100, 100);
+  pixmap.fill(color);
+  QIcon icon(pixmap);
+  color_button->setIcon(icon);
+  color_button->setText(color.name(QColor::NameFormat::HexRgb).toUpper());
+}
 void EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::ValueChanged(
   QColor v) {
   glm::vec3 new_color = GetVec3(v);
-  color_button->setText(v.name(QColor::NameFormat::HexRgb).toUpper());
+  UpdateButton(v);
   property_->setter_(new_color);
 }
 void EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::

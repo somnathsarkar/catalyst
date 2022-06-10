@@ -75,6 +75,7 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField
   QPushButton* color_button;
   QColorDialog* color_dialog;
   glm::vec3 GetVec3(const QColor& color) const;
+  void UpdateButton(const QColor& color);
 
  private slots:
   void ValueChanged(QColor v);
