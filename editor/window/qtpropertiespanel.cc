@@ -129,9 +129,9 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtVec3SpinboxField::QtVec3SpinboxFiel
     spinboxes_[i].setMaximum(property_->max_value_);
     spinboxes_[i].setSingleStep(0.1);
     spinboxes_[i].setValue(vec_array[i]);
-    layout_->addWidget(&spinboxes_[i]);
     QObject::connect(&spinboxes_[i], &QDoubleSpinBox::valueChanged, this,
                      &QtVec3SpinboxField::ValueChanged);
+    layout_->addWidget(&spinboxes_[i]);
   }
 }
 EditorWindow::QtWindow::QtPropertiesPanel::QtVec3SpinboxField::~QtVec3SpinboxField() {
@@ -152,6 +152,8 @@ void EditorWindow::QtWindow::QtPropertiesPanel::QtVec3SpinboxField::ValueChanged
 EditorWindow::QtWindow::QtPropertiesPanel::QtFloatField::QtFloatField(
     QtPropertiesPanel* property_panel, catalyst::FloatProperty * property)
     : property_panel_(property_panel), property_(property) {
+  layout_ = new QHBoxLayout(this);
+  layout_->setContentsMargins(0, 0, 0, 0);
   spinbox_ = new QDoubleSpinBox(this);
   float initial_value = property_->getter_();
   spinbox_->setMinimum(property_->min_value_);
@@ -161,6 +163,7 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtFloatField::QtFloatField(
   spinbox_->setValue(initial_value);
   QObject::connect(spinbox_, &QDoubleSpinBox::valueChanged, this,
                     &QtFloatField::ValueChanged);
+  layout_->addWidget(spinbox_);
 }
 void EditorWindow::QtWindow::QtPropertiesPanel::QtFloatField::ValueChanged(
     double v) {
@@ -168,7 +171,10 @@ void EditorWindow::QtWindow::QtPropertiesPanel::QtFloatField::ValueChanged(
   property_->setter_(new_value);
 }
 EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::QtNamedIndexField(
-    QtPropertiesPanel* property_panel, catalyst::NamedIndexProperty* property) : property_panel_(property_panel),property_(property) {
+    QtPropertiesPanel* property_panel, catalyst::NamedIndexProperty* property)
+    : property_panel_(property_panel), property_(property) {
+  layout_ = new QHBoxLayout(this);
+  layout_->setContentsMargins(0, 0, 0, 0);
   combobox_ = new QComboBox(this);
   std::vector<std::string> name_list = property_->name_getter_();
   if (property_->style_ == catalyst::NamedIndexPropertyStyle::kAllowNone)
@@ -179,6 +185,7 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::QtNamedIndexField(
   SetComboBoxIndex(property_->getter_());
   QObject::connect(combobox_, &QComboBox::currentIndexChanged, this,
           &QtNamedIndexField::ValueChanged);
+  layout_->addWidget(combobox_);
 }
 int EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::
     GetPropertyIndex(int combobox_index) {
@@ -202,6 +209,8 @@ void EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField::ValueChanged(
 EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField::QtIntegerField(
     QtPropertiesPanel* property_panel, catalyst::IntegerProperty* property)
     : property_panel_(property_panel), property_(property) {
+  layout_ = new QHBoxLayout(this);
+  layout_->setContentsMargins(0, 0, 0, 0);
   spinbox_ = new QSpinBox(this);
   float initial_value = property_->getter_();
   spinbox_->setMinimum(property_->min_value_);
@@ -209,6 +218,7 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField::QtIntegerField(
   spinbox_->setValue(initial_value);
   QObject::connect(spinbox_, &QSpinBox::valueChanged, this,
                    &QtIntegerField::ValueChanged);
+  layout_->addWidget(spinbox_);
 }
 void EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField::ValueChanged(
     int new_value) {
@@ -217,6 +227,8 @@ void EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField::ValueChanged(
 EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField::QtBooleanField(
     QtPropertiesPanel* property_panel, catalyst::BooleanProperty* property)
     : property_panel_(property_panel), property_(property) {
+  layout_ = new QHBoxLayout(this);
+  layout_->setContentsMargins(0, 0, 0, 0);
   checkbox_ = new QCheckBox("", this);
   bool initial_value = property_->getter_();
   if (initial_value)
@@ -225,6 +237,7 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField::QtBooleanField(
     checkbox_->setCheckState(Qt::CheckState::Unchecked);
   QObject::connect(checkbox_, &QCheckBox::stateChanged, this,
                    &QtBooleanField::ValueChanged);
+  layout_->addWidget(checkbox_);
 }
 void EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField::ValueChanged(
   int state) {
@@ -234,6 +247,8 @@ void EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField::ValueChanged(
 EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::QtVec3ColorField(
     QtPropertiesPanel* property_panel, catalyst::Vec3Property* property)
     : property_panel_(property_panel), property_(property) {
+  layout_ = new QHBoxLayout(this);
+  layout_->setContentsMargins(0, 0, 0, 0);
   color_button = new QPushButton("Change color...", this);
   color_dialog = new QColorDialog(this);
   glm::vec3 value = property_->getter_();
@@ -244,6 +259,7 @@ EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::QtVec3ColorField(
                    &QtVec3ColorField::ValueChanged);
   QObject::connect(color_button, &QAbstractButton::released, this,
                    &QtVec3ColorField::ButtonPressed);
+  layout_->addWidget(color_button);
 }
 glm::vec3 EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField::GetVec3(const QColor& color)
     const {

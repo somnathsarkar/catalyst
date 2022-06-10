@@ -40,6 +40,7 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtFloatField : public QWidget {
  private:
   QtPropertiesPanel* property_panel_;
   catalyst::FloatProperty* property_;
+  QHBoxLayout* layout_;
   QDoubleSpinBox* spinbox_;
 
  private slots:
@@ -70,6 +71,7 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtVec3ColorField
  private:
   QtPropertiesPanel* property_panel_;
   catalyst::Vec3Property* property_;
+  QHBoxLayout* layout_;
   QPushButton* color_button;
   QColorDialog* color_dialog;
   glm::vec3 GetVec3(const QColor& color) const;
@@ -86,6 +88,7 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtNamedIndexField : public QWid
  private:
   QtPropertiesPanel* property_panel_;
   catalyst::NamedIndexProperty* property_;
+  QHBoxLayout* layout_;
   QComboBox* combobox_;
   int GetPropertyIndex(int combobox_index);
   void SetComboBoxIndex(int property_index);
@@ -102,6 +105,7 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtIntegerField
  private:
   QtPropertiesPanel* property_panel_;
   catalyst::IntegerProperty* property_;
+  QHBoxLayout* layout_;
   QSpinBox* spinbox_;
 
  private slots:
@@ -116,6 +120,7 @@ class EditorWindow::QtWindow::QtPropertiesPanel::QtBooleanField
  private:
   QtPropertiesPanel* property_panel_;
   catalyst::BooleanProperty* property_;
+  QHBoxLayout* layout_;
   QCheckBox* checkbox_;
   
  private slots:
