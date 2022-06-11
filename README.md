@@ -1,8 +1,15 @@
 # Catalyst
+| Example Scene | Scene in Editor |
+| --- | --- |
+| ![Example Scene](images/engine.png)  | ![Scene in Editor](images/editor.png)  |
 
 Catalyst is a physically-based, real-time renderer written in Vulkan and modern C++. This project consists of a library and a user-friendly, interactive editor application written using Qt.
 
 ## Graphics Features
+| ![Graphics Flowchart](images/flowchart.png) |
+|:--:|
+| *How a frame is rendered using Catalyst* |
+
 Catalyst implements many important elements of modern 3D game engines, this list contains some of the major features:
 
 - PBR Material support, based on the Disney Diffuse Model.
@@ -16,6 +23,10 @@ Catalyst implements many important elements of modern 3D game engines, this list
 - Multisample Anti-Aliasing (MSAA).
 
 ## Editor Features
+| ![Editor material settings](images/editor-materials.png) |
+|:--:|
+| *Modifying material properties in the Catalyst editor* |
+
 The included editor provides an interface to test out the library:
 
 - Ability to load custom models and texture images from files on disk.
