@@ -3,7 +3,7 @@
 | --- | --- |
 | ![Example Scene](images/engine.png)  | ![Scene in Editor](images/editor.png)  |
 
-Catalyst is a physically-based, real-time renderer written in Vulkan and modern C++. This project consists of a library and a user-friendly, interactive editor application written using Qt.
+Catalyst is a physically-based, real-time renderer written in Vulkan and modern C++. This project consists of a library and a user-friendly, interactive editor application written using Qt. For a full breakdown of how the rendering engine works, an in-depth article is available [here](https://somnathsarkar.io/2022/06/15/catalyst/).
 
 ## Graphics Features
 | ![Graphics Flowchart](images/flowchart.png) |
